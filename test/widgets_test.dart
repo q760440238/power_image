@@ -82,8 +82,7 @@ void main() {
           key: key,
           child: networkImage,
         ),
-        null,
-        EnginePhase.layout,
+        phase: EnginePhase.layout,
       );
 
       RenderImage renderImage =
@@ -125,12 +124,11 @@ void main() {
           key: key,
           child: networkImage,
         ),
-        null,
-        EnginePhase.layout,
+        phase: EnginePhase.layout,
       );
 
       RenderImage renderImage =
-      key.currentContext!.findRenderObject() as RenderImage;
+          key.currentContext!.findRenderObject() as RenderImage;
       expect(renderImage.image, isNull);
 
       expect(PowerImageLoader.completers.length == 1, true);
@@ -228,8 +226,7 @@ void main() {
             imageHeight: 22);
         expect(nativeAssetImage.image.runtimeType == PowerTextureImageProvider,
             true);
-        expect(
-            nativeAssetImage.image.options.imageType == imageTypeNativeAsset,
+        expect(nativeAssetImage.image.options.imageType == imageTypeNativeAsset,
             true);
         expect(nativeAssetImage.image.options.imageWidth == 11.0, true);
         expect(nativeAssetImage.image.options.imageHeight == 22.0, true);
@@ -334,8 +331,7 @@ void main() {
             'src',
             renderingType: renderingTypeTexture,
           ),
-          null,
-          EnginePhase.layout);
+          phase: EnginePhase.layout);
       expect(find.byType(PowerTextureImage), findsOneWidget);
       expect(find.byType(PowerExternalImage), findsNothing);
       await tester.pumpWidget(
@@ -343,8 +339,7 @@ void main() {
             'src',
             renderingType: renderingTypeExternal,
           ),
-          null,
-          EnginePhase.layout);
+          phase: EnginePhase.layout);
       expect(find.byType(PowerExternalImage), findsOneWidget);
       expect(find.byType(PowerTextureImage), findsNothing);
 
@@ -352,18 +347,17 @@ void main() {
           PowerImage(
             image: TestPowerExternalImageProvider(testRequestOptions()),
           ),
-          null,
-          EnginePhase.layout);
+          phase: EnginePhase.layout);
       expect(find.byType(PowerExternalImage), findsNothing);
       expect(find.byType(PowerTextureImage), findsNothing);
       expect(find.byType(ImageExt), findsOneWidget);
     });
 
     testWidgets('PowerTextureImage', (WidgetTester tester) async {
-      PowerTextureImage image =
-          PowerTextureImage(provider: testPowerImageProvider() as PowerTextureImageProvider);
+      PowerTextureImage image = PowerTextureImage(
+          provider: testPowerImageProvider() as PowerTextureImageProvider);
 
-      await tester.pumpWidget(image, null, EnginePhase.layout);
+      await tester.pumpWidget(image, phase: EnginePhase.layout);
 
       expect(find.byType(PowerTextureImage), findsOneWidget);
       expect(find.byType(ImageExt), findsOneWidget);
