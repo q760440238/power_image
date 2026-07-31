@@ -10,7 +10,6 @@ import 'power_image_request.dart';
 typedef EventHandler = void Function(Map<dynamic, dynamic> event);
 
 class PowerImagePlatformChannel extends PowerImageChannelImpl {
-
   StreamSubscription? _subscription;
 
   PowerImagePlatformChannel() {
@@ -68,5 +67,11 @@ class PowerImagePlatformChannel extends PowerImageChannelImpl {
   void releaseImageRequests(List<PowerImageRequest> requests) async {
     await methodChannel.invokeListMethod(
         'releaseImageRequests', encodeRequests(requests));
+  }
+
+  @override
+  void setImageAnimationActive(String uniqueKey, bool active) async {
+    await methodChannel.invokeMethod('setImageAnimationActive',
+        <String, dynamic>{'uniqueKey': uniqueKey, 'active': active});
   }
 }

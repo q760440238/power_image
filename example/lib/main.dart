@@ -12,19 +12,14 @@ import 'examples/image_cache_status.dart';
 
 void main() {
   runZonedGuarded(() async {
-
-    FlutterError.onError = (FlutterErrorDetails details) {
-
-    };
+    FlutterError.onError = (FlutterErrorDetails details) {};
 
     PowerImageBinding();
     PowerImageLoader.instance.setup(PowerImageSetupOptions(renderingTypeTexture,
         errorCallbackSamplingRate: null,
         errorCallback: (PowerImageLoadException exception) {}));
     runApp(const MyApp());
-  }, (error, stackTrace) async {
-
-  });
+  }, (error, stackTrace) async {});
 }
 
 class MyApp extends StatelessWidget {
@@ -63,9 +58,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     WidgetsBinding.instance!.addPostFrameCallback((_) {
-      DragOverlay.show(
-          context: context,
-          view: const ImageCacheStatusWidget());
+      DragOverlay.show(context: context, view: const ImageCacheStatusWidget());
     });
     super.initState();
   }
@@ -102,6 +95,14 @@ class _MyHomePageState extends State<MyHomePage> {
           },
         ),
         ListTile(
+          title: const Text('animated_benchmark'),
+          onTap: () {
+            Navigator.push(context, MaterialPageRoute(builder: (context) {
+              return const AnimatedBenchmarkPage();
+            }));
+          },
+        ),
+        ListTile(
           title: const Text('decoration_image'),
           onTap: () {
             Navigator.push(context, MaterialPageRoute(builder: (context) {
@@ -110,18 +111,49 @@ class _MyHomePageState extends State<MyHomePage> {
           },
         ),
         ListTile(
-          title: const Text('gallery'),
-          onTap: () async {
-            ImagePicker picker = ImagePicker();
-            var image = await picker.pickImage(source: ImageSource.gallery);
-            if (image != null) {
-              Navigator.push(context, MaterialPageRoute(builder: (context) {
-                return ExampleGalleryPrev(path: image.path,);
-              }));
-            }
-          }
-        )
+            title: const Text('gallery'),
+            onTap: () async {
+              ImagePicker picker = ImagePicker();
+              var image = await picker.pickImage(source: ImageSource.gallery);
+              if (image != null) {
+                Navigator.push(context, MaterialPageRoute(builder: (context) {
+                  return ExampleGalleryPrev(
+                    path: image.path,
+                  );
+                }));
+              }
+            })
       ]),
+    );
+  }
+}
+
+class AnimatedBenchmarkPage extends StatelessWidget {
+  const AnimatedBenchmarkPage({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('animated benchmark')),
+      body: GridView.builder(
+        cacheExtent: 0,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+        ),
+        itemCount: 60,
+        itemBuilder: (BuildContext context, int index) {
+          return PowerImage.type(
+            'benchmarkAnimatedWebp',
+            src: PowerImageRequestOptionsSrcNormal(src: 'benchmark-$index'),
+            renderingType: renderingTypeTexture,
+            width: 160,
+            height: 160,
+            imageWidth: 160,
+            imageHeight: 160,
+            fit: BoxFit.cover,
+          );
+        },
+      ),
     );
   }
 }

@@ -380,5 +380,36 @@ void main() {
       expect(texture, isNotNull);
       expect(texture.textureId, 11);
     });
+
+    testWidgets('PowerTextureImage pauses with TickerMode and lifecycle',
+        (WidgetTester tester) async {
+      final List<MethodCall> animationCalls = <MethodCall>[];
+      platformChannel!.methodChannel
+          .setMockMethodCallHandler((MethodCall methodCall) async {
+        if (methodCall.method == 'setImageAnimationActive') {
+          animationCalls.add(methodCall);
+        }
+        return <Map<String, dynamic>>[<String, dynamic>{}];
+      });
+
+      final PowerTextureImage image = PowerTextureImage(
+          provider: testPowerImageProvider() as PowerTextureImageProvider);
+
+      await tester.pumpWidget(TickerMode(enabled: true, child: image),
+          phase: EnginePhase.layout);
+      expect(animationCalls.last.arguments['active'], true);
+
+      await tester.pumpWidget(TickerMode(enabled: false, child: image),
+          phase: EnginePhase.layout);
+      expect(animationCalls.last.arguments['active'], false);
+
+      await tester.pumpWidget(TickerMode(enabled: true, child: image),
+          phase: EnginePhase.layout);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      expect(animationCalls.last.arguments['active'], false);
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      expect(animationCalls.last.arguments['active'], true);
+    });
   });
 }

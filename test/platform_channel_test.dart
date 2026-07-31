@@ -79,6 +79,21 @@ void main() {
       );
     });
 
+    test('setImageAnimationActive', () async {
+      PowerImageLoader.instance.channel
+          .setImageAnimationActive('texture-key', false);
+
+      expect(
+        calls['setImageAnimationActive'],
+        <Matcher>[
+          isMethodCall('setImageAnimationActive', arguments: <String, dynamic>{
+            'uniqueKey': 'texture-key',
+            'active': false,
+          })
+        ],
+      );
+    });
+
     test('onReceiveImageEvent', () async {
       PowerImageCompleter imageCompleter = PowerImageLoader.instance.loadImage(
           PowerImageRequestOptions(

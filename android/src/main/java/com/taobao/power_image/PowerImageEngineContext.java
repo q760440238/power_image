@@ -85,12 +85,30 @@ public class PowerImageEngineContext implements MethodChannel.MethodCallHandler 
             } else {
                 throw new IllegalArgumentException("stopImageRequests require List arguments");
             }
+        } else if ("setImageAnimationActive".equals(call.method)) {
+            if (call.arguments instanceof Map) {
+                Map arguments = (Map) call.arguments;
+                String uniqueKey = (String) arguments.get("uniqueKey");
+                Object activeValue = arguments.get("active");
+                if (uniqueKey != null && activeValue instanceof Boolean) {
+                    powerImageRequestManager.setAnimationActive(
+                            uniqueKey, (Boolean) activeValue);
+                    result.success(true);
+                } else {
+                    result.error("invalid_arguments",
+                            "setImageAnimationActive requires uniqueKey and active", null);
+                }
+            } else {
+                result.error("invalid_arguments",
+                        "setImageAnimationActive requires Map arguments", null);
+            }
         } else {
             result.notImplemented();
         }
     }
 
     public void onDetached() {
+        powerImageRequestManager.releaseAllRequests();
         if (methodChannel != null) {
             methodChannel.setMethodCallHandler(null);
         }

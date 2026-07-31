@@ -23,12 +23,14 @@ public abstract class FlutterMultiFrameImage extends FlutterImage implements Dra
     private static final String TAG = "FlutterMultiFrameImage";
     // schedule thread for multi-frame
     private static final Handler gAnimateScheduler;
+    private static final MultiFrameRenderCoordinator gRenderCoordinator;
 
     static {
         final HandlerThread schedulerThead = new HandlerThread("multi-frame-image-scheduler");
         schedulerThead.start();
 
         gAnimateScheduler = new Handler(schedulerThead.getLooper());
+        gRenderCoordinator = new MultiFrameRenderCoordinator(gAnimateScheduler);
     }
 
     private volatile Surface fixedSurface;
@@ -36,26 +38,10 @@ public abstract class FlutterMultiFrameImage extends FlutterImage implements Dra
     private volatile Rect destRect;
 
     private volatile boolean released = false;
+    private volatile boolean animationActive = true;
     private boolean started = false;
 
     private final AtomicBoolean frameDirty = new AtomicBoolean(false);
-    private final AtomicBoolean frameTaskScheduled = new AtomicBoolean(false);
-    private final Runnable renderFrameTask = new Runnable() {
-        @Override
-        public void run() {
-            try {
-                frameDirty.set(false);
-                renderCurrentFrame();
-            } catch (Throwable t) {
-                t.printStackTrace();
-            } finally {
-                frameTaskScheduled.set(false);
-                if (frameDirty.get() && !released) {
-                    scheduleFrameRender();
-                }
-            }
-        }
-    };
 
     public FlutterMultiFrameImage(Drawable drawable) {
         this(drawable,  false);
@@ -68,12 +54,12 @@ public abstract class FlutterMultiFrameImage extends FlutterImage implements Dra
 
     @Override
     public final void invalidateDrawable(final Drawable who) {
-        if (released) {
+        if (released || !animationActive) {
             return;
         }
 
         frameDirty.set(true);
-        scheduleFrameRender();
+        gRenderCoordinator.requestRender(this);
     }
 
     /**
@@ -140,11 +126,11 @@ public abstract class FlutterMultiFrameImage extends FlutterImage implements Dra
     private void attachSurface(Rect destRect) {
         this.destRect = new Rect(destRect);
         frameDirty.set(true);
-        scheduleFrameRender();
+        gRenderCoordinator.requestRender(this);
         runOnScheduler(new Runnable() {
             @Override
             public void run() {
-                if (drawable != null && !started) {
+                if (animationActive && drawable != null && !started) {
                     started = true;
                     onStart(drawable);
                 }
@@ -166,7 +152,9 @@ public abstract class FlutterMultiFrameImage extends FlutterImage implements Dra
 
         final Canvas canvas = lockSurfaceCanvas(surface);
         try {
-            canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+            if (!coversOpaqueSurface(currentDrawable, currentDestRect, canvas)) {
+                canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+            }
             currentDrawable.setBounds(currentDestRect);
             currentDrawable.draw(canvas);
         } finally {
@@ -174,10 +162,33 @@ public abstract class FlutterMultiFrameImage extends FlutterImage implements Dra
         }
     }
 
-    private void scheduleFrameRender() {
-        if (frameTaskScheduled.compareAndSet(false, true)) {
-            gAnimateScheduler.post(renderFrameTask);
+    final void renderPendingFrame() {
+        if (released || !frameDirty.getAndSet(false)) {
+            return;
         }
+        try {
+            renderCurrentFrame();
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+    }
+
+    private boolean coversOpaqueSurface(
+            Drawable currentDrawable, Rect currentDestRect, Canvas canvas) {
+        return isCurrentFrameOpaqueAndComplete(currentDrawable)
+                && currentDestRect.left <= 0
+                && currentDestRect.top <= 0
+                && currentDestRect.right >= canvas.getWidth()
+                && currentDestRect.bottom >= canvas.getHeight();
+    }
+
+    /**
+     * Subclasses may opt into skipping the surface clear only when every
+     * rendered frame is known to be both opaque and a complete image.
+     * Drawable#getOpacity alone is not sufficient for partial GIF/WebP frames.
+     */
+    protected boolean isCurrentFrameOpaqueAndComplete(Drawable who) {
+        return false;
     }
 
     /**
@@ -187,6 +198,36 @@ public abstract class FlutterMultiFrameImage extends FlutterImage implements Dra
     protected abstract void onStart(Drawable who);
 
     protected void onStop(Drawable who) {
+    }
+
+    @Override
+    public final void setAnimationActive(final boolean active) {
+        if (released || animationActive == active) {
+            return;
+        }
+        animationActive = active;
+        if (active) {
+            frameDirty.set(true);
+            gRenderCoordinator.requestRender(this);
+        } else {
+            frameDirty.set(false);
+            gRenderCoordinator.remove(this);
+        }
+        runOnScheduler(new Runnable() {
+            @Override
+            public void run() {
+                if (drawable == null) {
+                    return;
+                }
+                if (active && hasSurface() && !started) {
+                    started = true;
+                    onStart(drawable);
+                } else if (!active && started) {
+                    onStop(drawable);
+                    started = false;
+                }
+            }
+        }, false);
     }
 
     @Override
@@ -214,7 +255,7 @@ public abstract class FlutterMultiFrameImage extends FlutterImage implements Dra
     public final void release() {
         released = true;
         frameDirty.set(false);
-        gAnimateScheduler.removeCallbacks(renderFrameTask);
+        gRenderCoordinator.remove(this);
 
         runOnScheduler(new Runnable() {
             @Override
@@ -236,6 +277,10 @@ public abstract class FlutterMultiFrameImage extends FlutterImage implements Dra
     }
 
     protected abstract void onRelease(Drawable who);
+
+    private boolean hasSurface() {
+        return surfaceProvider != null || fixedSurface != null;
+    }
 
     private void runOnScheduler(Runnable task, boolean forceNextLoop) {
         if (Thread.currentThread() == gAnimateScheduler.getLooper().getThread() && !forceNextLoop) {

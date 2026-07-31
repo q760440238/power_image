@@ -29,6 +29,7 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
     private final AtomicBoolean loadSuccessSent = new AtomicBoolean(false);
     private volatile boolean stopped;
     private volatile boolean surfaceAvailable;
+    private volatile boolean animationActive = true;
     private volatile TextureRegistry.SurfaceProducer textureEntry;
     private volatile int imageTextureWidth;
     private volatile int imageTextureHeight;
@@ -115,6 +116,7 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
                 if (realResult != null && realResult.image != null) {
                     realResult.image.release();
                 }
+                releaseLoadHandle();
             }
         };
 
@@ -144,6 +146,7 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
         surfaceAvailable = true;
         PowerImageResult result = realResult;
         if (!stopped && result != null && result.image != null && result.image.isValid()) {
+            result.image.setAnimationActive(animationActive);
             performDraw(result.image);
         }
     }
@@ -159,6 +162,15 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
         PowerImageResult result = realResult;
         if (result != null && result.image != null) {
             result.image.onSurfaceCleanup();
+        }
+    }
+
+    @Override
+    public void setAnimationActive(boolean active) {
+        animationActive = active;
+        PowerImageResult result = realResult;
+        if (result != null && result.image != null) {
+            result.image.setAnimationActive(active && surfaceAvailable);
         }
     }
 
@@ -179,6 +191,7 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
                     // 显示纹理
                     checkImageTextureSize(image);
                     entry.setSize(imageTextureWidth, imageTextureHeight);
+                    image.setAnimationActive(animationActive);
                     Surface surface = entry.getSurface();
                     if (surface != null && surface.isValid()) {
                         try {

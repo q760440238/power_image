@@ -3,10 +3,19 @@ package com.taobao.power_image_example.power_image_loader;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 
+import androidx.annotation.Nullable;
+
 import com.bumptech.glide.integration.webp.decoder.WebpDrawable;
+import com.bumptech.glide.load.DataSource;
+import com.bumptech.glide.load.engine.GlideException;
 import com.bumptech.glide.load.resource.bitmap.DownsampleStrategy;
 import com.bumptech.glide.load.resource.gif.GifDrawable;
 import com.bumptech.glide.RequestBuilder;
+import com.bumptech.glide.RequestManager;
+import com.bumptech.glide.request.RequestListener;
+import com.bumptech.glide.request.FutureTarget;
+import com.bumptech.glide.request.target.Target;
+import com.taobao.power_image.loader.PowerImageLoaderProtocol;
 import com.taobao.power_image.loader.FlutterSingleFrameImage;
 import com.taobao.power_image.loader.PowerImageResult;
 import com.taobao.power_image.request.PowerImageRequestConfig;
@@ -25,6 +34,47 @@ final class PowerImageGlideResult {
                     .downsample(DownsampleStrategy.AT_MOST);
         }
         return builder;
+    }
+
+    static void submit(
+            final RequestManager requestManager,
+            RequestBuilder<Drawable> builder,
+            final PowerImageRequestConfig request,
+            final PowerImageLoaderProtocol.PowerImageResponse response) {
+        final FutureTarget<Drawable> target = targetSize(builder, request)
+                .listener(new RequestListener<Drawable>() {
+                    @Override
+                    public boolean onLoadFailed(
+                            @Nullable GlideException e,
+                            Object model,
+                            Target<Drawable> target,
+                            boolean isFirstResource) {
+                        response.onResult(PowerImageResult.genFailRet(
+                                "Native加载失败: "
+                                        + (e != null ? e.getMessage() : "null")));
+                        return true;
+                    }
+
+                    @Override
+                    public boolean onResourceReady(
+                            Drawable resource,
+                            Object model,
+                            Target<Drawable> target,
+                            DataSource dataSource,
+                            boolean isFirstResource) {
+                        response.onResult(fromDrawable(resource));
+                        return true;
+                    }
+                })
+                .submit(
+                        request.width <= 0 ? Target.SIZE_ORIGINAL : request.width,
+                        request.height <= 0 ? Target.SIZE_ORIGINAL : request.height);
+        response.onRequestHandle(new PowerImageLoaderProtocol.PowerImageRequestHandle() {
+            @Override
+            public void cancel() {
+                requestManager.clear(target);
+            }
+        });
     }
 
     static PowerImageResult fromDrawable(Drawable resource) {

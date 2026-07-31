@@ -21,11 +21,13 @@ public class PowerImageRequestManager {
     private final PowerImageEngineContext engineContext;
 
     private Map<String, PowerImageBaseRequest> requests;
+    private final Map<String, Boolean> animationStates;
     private WeakReference<TextureRegistry> textureRegistryWrf;
 
     public PowerImageRequestManager(PowerImageEngineContext context) {
         engineContext = context;
         requests = new HashMap<>();
+        animationStates = new HashMap<>();
     }
 
     public void configWithTextureRegistry(TextureRegistry textureRegistry) {
@@ -49,6 +51,10 @@ public class PowerImageRequestManager {
                 continue;
             }
             requests.put(request.requestId, request);
+            Boolean animationActive = animationStates.get(request.requestId);
+            if (animationActive != null) {
+                request.setAnimationActive(animationActive);
+            }
             boolean success = request.configTask();
             Map<String, Object> requestInfo = request.encode();
             requestInfo.put("success", success);
@@ -80,6 +86,7 @@ public class PowerImageRequestManager {
             PowerImageBaseRequest request = requests.get(requestId);
             if (request != null) {
                 requests.remove(requestId);
+                animationStates.remove(requestId);
                 boolean success = request.stopTask();
                 Map<String, Object> requestInfo = request.encode();
                 requestInfo.put("success", success);
@@ -87,5 +94,24 @@ public class PowerImageRequestManager {
             }
         }
         return results;
+    }
+
+    public void setAnimationActive(String requestId, boolean active) {
+        if (requestId == null) {
+            return;
+        }
+        animationStates.put(requestId, active);
+        PowerImageBaseRequest request = requests.get(requestId);
+        if (request != null) {
+            request.setAnimationActive(active);
+        }
+    }
+
+    public void releaseAllRequests() {
+        for (PowerImageBaseRequest request : new ArrayList<>(requests.values())) {
+            request.stopTask();
+        }
+        requests.clear();
+        animationStates.clear();
     }
 }

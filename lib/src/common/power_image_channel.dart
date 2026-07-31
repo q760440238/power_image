@@ -14,10 +14,11 @@ abstract class PowerImageChannelImpl {
   void startImageRequests(List<PowerImageRequest> requests);
 
   void releaseImageRequests(List<PowerImageRequest> requests);
+
+  void setImageAnimationActive(String uniqueKey, bool active);
 }
 
 class PowerImageChannel {
-
   PowerImageChannelImpl? impl;
 
   void setup() {
@@ -30,5 +31,9 @@ class PowerImageChannel {
 
   void releaseImageRequests(List<PowerImageRequest> requests) async {
     impl!.releaseImageRequests(requests);
+  }
+
+  void setImageAnimationActive(String uniqueKey, bool active) {
+    impl!.setImageAnimationActive(uniqueKey, active);
   }
 }

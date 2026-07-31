@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import 'package:power_image_ext/image_ext.dart';
 import 'package:power_image_ext/image_info_ext.dart';
+import '../common/power_image_loader.dart';
 import 'power_texture_image_provider.dart';
 
 class PowerTextureImage extends StatefulWidget {
@@ -16,7 +17,7 @@ class PowerTextureImage extends StatefulWidget {
     this.alignment = Alignment.center,
     this.semanticLabel,
     this.excludeFromSemantics = false,
-  }):super(key: key);
+  }) : super(key: key);
 
   final PowerTextureImageProvider provider;
   final ImageFrameBuilder? frameBuilder;
@@ -46,7 +47,59 @@ class PowerTextureImage extends StatefulWidget {
   }
 }
 
-class PowerTextureState extends State<PowerTextureImage> {
+class PowerTextureState extends State<PowerTextureImage>
+    with WidgetsBindingObserver {
+  final Object _visibilityOwner = Object();
+  bool _tickerActive = true;
+  bool _applicationActive = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    final AppLifecycleState? state = WidgetsBinding.instance.lifecycleState;
+    _applicationActive = state == null || state == AppLifecycleState.resumed;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _tickerActive = TickerMode.of(context);
+    _updateAnimationState();
+  }
+
+  @override
+  void didUpdateWidget(covariant PowerTextureImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.provider.options != widget.provider.options) {
+      PowerImageLoader.instance.removeTextureVisibility(
+          oldWidget.provider.options, _visibilityOwner);
+      _updateAnimationState();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final bool applicationActive = state == AppLifecycleState.resumed;
+    if (_applicationActive != applicationActive) {
+      _applicationActive = applicationActive;
+      _updateAnimationState();
+    }
+  }
+
+  void _updateAnimationState() {
+    PowerImageLoader.instance.updateTextureVisibility(widget.provider.options,
+        _visibilityOwner, _tickerActive && _applicationActive);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    PowerImageLoader.instance
+        .removeTextureVisibility(widget.provider.options, _visibilityOwner);
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return ImageExt(

@@ -24,6 +24,8 @@ class PowerImageLoader {
   static PowerImageLoader instance = PowerImageLoader._();
 
   PowerImageChannel channel = PowerImageChannel();
+  final Map<String, Set<Object>> _activeTextureOwners = <String, Set<Object>>{};
+  final Map<Object, String> _textureOwnerKeys = <Object, String>{};
 
   String get globalRenderType => _globalRenderType;
   String _globalRenderType = defaultGlobalRenderType;
@@ -35,7 +37,8 @@ class PowerImageLoader {
   void setup(PowerImageSetupOptions? options) {
     _globalRenderType = options?.globalRenderType ?? defaultGlobalRenderType;
     PowerImageMonitor.instance().errorCallback = options?.errorCallback;
-    PowerImageMonitor.instance().errorCallbackSamplingRate = options?.errorCallbackSamplingRate;
+    PowerImageMonitor.instance().errorCallbackSamplingRate =
+        options?.errorCallbackSamplingRate;
     channel.setup();
   }
 
@@ -63,6 +66,50 @@ class PowerImageLoader {
     channel.releaseImageRequests(<PowerImageRequest>[request]);
   }
 
+  void updateTextureVisibility(
+      PowerImageRequestOptions options, Object owner, bool active) {
+    final String? key = PowerImageRequest.create(options).uniqueKey();
+    if (key == null) {
+      return;
+    }
+
+    final String? previousKey = _textureOwnerKeys[owner];
+    if (previousKey != null && previousKey != key) {
+      _removeTextureOwner(previousKey, owner);
+    }
+    final bool firstObservation = previousKey == null || previousKey != key;
+    _textureOwnerKeys[owner] = key;
+
+    final Set<Object> activeOwners =
+        _activeTextureOwners.putIfAbsent(key, () => <Object>{});
+    final bool changed =
+        active ? activeOwners.add(owner) : activeOwners.remove(owner);
+    if (changed || firstObservation) {
+      channel.setImageAnimationActive(key, activeOwners.isNotEmpty);
+    }
+  }
+
+  void removeTextureVisibility(PowerImageRequestOptions options, Object owner) {
+    final String? key = _textureOwnerKeys.remove(owner) ??
+        PowerImageRequest.create(options).uniqueKey();
+    if (key != null) {
+      _removeTextureOwner(key, owner);
+    }
+  }
+
+  void _removeTextureOwner(String key, Object owner) {
+    final Set<Object>? activeOwners = _activeTextureOwners[key];
+    if (activeOwners == null) {
+      return;
+    }
+    if (activeOwners.remove(owner)) {
+      channel.setImageAnimationActive(key, activeOwners.isNotEmpty);
+    }
+    if (activeOwners.isEmpty) {
+      _activeTextureOwners.remove(key);
+    }
+  }
+
   /// prefetch imageTypeNetwork image
   /// base of
   /// Future<ImageInfo> prefetch(
@@ -87,7 +134,8 @@ class PowerImageLoader {
   /// base of
   /// Future<ImageInfo> prefetch(
   ///       PowerImageRequestOptions options, BuildContext context)
-  Future<PowerImageInfo?> prefetchNativeAssetImage(String src, BuildContext context,
+  Future<PowerImageInfo?> prefetchNativeAssetImage(
+      String src, BuildContext context,
       {String? renderingType,
       double? imageWidth,
       double? imageHeight,

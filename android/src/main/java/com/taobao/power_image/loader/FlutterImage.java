@@ -69,6 +69,12 @@ public abstract class FlutterImage {
     public void onSurfaceCleanup() {
     }
 
+    /**
+     * Pauses or resumes animated images. Single-frame images ignore this state.
+     */
+    public void setAnimationActive(boolean active) {
+    }
+
     protected final Canvas lockSurfaceCanvas(Surface surface) {
         if (surface == null || !surface.isValid()) {
             throw new IllegalStateException("Surface is unavailable");

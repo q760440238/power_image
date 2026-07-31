@@ -94,6 +94,10 @@ public class PowerImageExternalRequest extends PowerImageBaseRequest {
         imageTaskState = REQUEST_STATE_RELEASE_SUCCEED;
         releaseBitmapPixels(bitmap);
         bitmap = null;
+        if (realResult != null && realResult.image != null) {
+            realResult.image.release();
+        }
+        releaseLoadHandle();
         return true;
     }
 

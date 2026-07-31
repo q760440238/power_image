@@ -1,7 +1,5 @@
 package com.taobao.power_image.loader;
 
-import android.graphics.Bitmap;
-
 import com.taobao.power_image.request.PowerImageRequestConfig;
 
 /**
@@ -9,8 +7,15 @@ import com.taobao.power_image.request.PowerImageRequestConfig;
  */
 public interface PowerImageLoaderProtocol {
 
+    interface PowerImageRequestHandle {
+        void cancel();
+    }
+
     interface PowerImageResponse {
         void onResult(PowerImageResult result);
+
+        default void onRequestHandle(PowerImageRequestHandle handle) {
+        }
     }
 
     void handleRequest(PowerImageRequestConfig request, PowerImageResponse response);

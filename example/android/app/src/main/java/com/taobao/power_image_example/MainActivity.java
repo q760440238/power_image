@@ -4,6 +4,7 @@ import android.os.Bundle;
 
 import com.taobao.power_image.loader.PowerImageLoader;
 import com.taobao.power_image_example.power_image_loader.PowerImageFileLoader;
+import com.taobao.power_image_example.power_image_loader.PowerImageBenchmarkLoader;
 import com.taobao.power_image_example.power_image_loader.PowerImageFlutterAssetLoader;
 import com.taobao.power_image_example.power_image_loader.PowerImageNativeAssetLoader;
 import com.taobao.power_image_example.power_image_loader.PowerImageNetworkLoader;
@@ -22,5 +23,8 @@ public class MainActivity extends FlutterActivity {
                 new PowerImageFlutterAssetLoader(this.getApplicationContext()), "asset");
         PowerImageLoader.getInstance().registerImageLoader(
                 new PowerImageFileLoader(this.getApplicationContext()), "file");
+        PowerImageLoader.getInstance().registerImageLoader(
+                new PowerImageBenchmarkLoader(this.getApplicationContext()),
+                PowerImageBenchmarkLoader.IMAGE_TYPE);
     }
 }

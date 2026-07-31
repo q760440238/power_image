@@ -25,7 +25,10 @@ public abstract class PowerImageBaseRequest {
     public static final String RENDER_TYPE_TEXTURE = "texture";
 
     private final PowerImageEngineContext engineContext;
+    private final Object loadHandleLock = new Object();
     private PowerImageRequestConfig imageRequestConfig;
+    private PowerImageLoaderProtocol.PowerImageRequestHandle loadHandle;
+    private boolean loadHandleReleased;
     String requestId;
     protected String imageTaskState;
     protected PowerImageResult realResult;
@@ -64,8 +67,39 @@ public abstract class PowerImageBaseRequest {
                     public void onResult(PowerImageResult result) {
                         PowerImageBaseRequest.this.onLoadResult(result);
                     }
+
+                    @Override
+                    public void onRequestHandle(
+                            PowerImageLoaderProtocol.PowerImageRequestHandle handle) {
+                        PowerImageBaseRequest.this.setLoadHandle(handle);
+                    }
                 }
         );
+    }
+
+    private void setLoadHandle(PowerImageLoaderProtocol.PowerImageRequestHandle handle) {
+        boolean cancelImmediately;
+        synchronized (loadHandleLock) {
+            cancelImmediately = loadHandleReleased;
+            if (!cancelImmediately) {
+                loadHandle = handle;
+            }
+        }
+        if (cancelImmediately && handle != null) {
+            handle.cancel();
+        }
+    }
+
+    protected final void releaseLoadHandle() {
+        PowerImageLoaderProtocol.PowerImageRequestHandle handle;
+        synchronized (loadHandleLock) {
+            loadHandleReleased = true;
+            handle = loadHandle;
+            loadHandle = null;
+        }
+        if (handle != null) {
+            handle.cancel();
+        }
     }
 
     void onLoadResult(PowerImageResult result) {
@@ -96,6 +130,9 @@ public abstract class PowerImageBaseRequest {
 
     public boolean stopTask() {
         return false;
+    }
+
+    public void setAnimationActive(boolean active) {
     }
 
     public Map<String, Object> encode() {
