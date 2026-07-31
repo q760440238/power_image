@@ -6,6 +6,7 @@ import android.view.Surface;
 import com.taobao.power_image.PowerImageEngineContext;
 import com.taobao.power_image.PowerImageDiagnostics;
 import com.taobao.power_image.dispatcher.PowerImageDispatcher;
+import com.taobao.power_image.loader.FlutterEncodedImage;
 import com.taobao.power_image.loader.FlutterImage;
 import com.taobao.power_image.loader.PowerImageResult;
 
@@ -40,6 +41,9 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
     private volatile boolean surfaceAvailable;
     private volatile boolean animationActive = true;
     private volatile TextureRegistry.SurfaceProducer textureEntry;
+    private volatile byte[] flutterCodecData;
+    private volatile String flutterCodecFilePath;
+    private volatile boolean flutterCodecBackend;
     private volatile int imageTextureWidth;
     private volatile int imageTextureHeight;
     private int bitmapWidth;
@@ -88,6 +92,10 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
         bitmapHeight = result.image.getHeight();
         checkImageTextureSize(result.image);
 
+        if (useFlutterCodec(result.image)) {
+            return;
+        }
+
         PowerImageDispatcher.getInstance().runOnMainThread(new Runnable() {
             @Override
             public void run() {
@@ -126,6 +134,8 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
     private boolean stopTask(final boolean engineDetaching) {
         stopped = true;
         surfaceAvailable = false;
+        flutterCodecData = null;
+        flutterCodecFilePath = null;
         if (!markRequestReleased()) {
             return true;
         }
@@ -211,7 +221,76 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
         if (entry != null) {
             encodedRequest.put("textureId", entry.id());
         }
+        byte[] encodedData = flutterCodecData;
+        String encodedFilePath = flutterCodecFilePath;
+        if (flutterCodecBackend && (encodedData != null || encodedFilePath != null)) {
+            encodedRequest.put("renderingBackend", "flutterCodec");
+            if (encodedData != null) {
+                encodedRequest.put("encodedData", encodedData);
+            }
+            if (encodedFilePath != null) {
+                encodedRequest.put("encodedFilePath", encodedFilePath);
+            }
+            encodedRequest.put("targetWidth", imageTextureWidth);
+            encodedRequest.put("targetHeight", imageTextureHeight);
+        }
         return encodedRequest;
+    }
+
+    private boolean useFlutterCodec(final FlutterImage image) {
+        if (!(image instanceof FlutterEncodedImage) || image.getFrameCount() <= 1) {
+            return false;
+        }
+
+        final byte[] encodedData;
+        final String encodedFilePath;
+        try {
+            encodedData = image.getEncodedData();
+            encodedFilePath = image.getEncodedFilePath();
+        } catch (RuntimeException error) {
+            PowerImageDiagnostics.error(
+                    "flutter_codec_data_failed", requestId, null, error);
+            return false;
+        }
+        boolean hasData = encodedData != null && encodedData.length > 0;
+        boolean hasFile = encodedFilePath != null && !encodedFilePath.isEmpty();
+        if (!hasData && !hasFile) {
+            onLoadFailed(TAG + ": encoded image has no data");
+            return true;
+        }
+
+        flutterCodecData = hasData ? encodedData : null;
+        flutterCodecFilePath = hasFile ? encodedFilePath : null;
+        flutterCodecBackend = true;
+        loadSuccessSent.set(true);
+        PowerImageDiagnostics.debug(
+                "flutter_codec_backend",
+                requestId,
+                "bytes=" + (hasData ? encodedData.length : 0)
+                        + " file=" + hasFile
+                        + " source=" + bitmapWidth + "x" + bitmapHeight
+                        + " target=" + imageTextureWidth + "x" + imageTextureHeight);
+        image.release(new Runnable() {
+            @Override
+            public void run() {
+                PowerImageDispatcher.getInstance().runOnMainThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            releaseLoadHandle();
+                            if (!stopped && !isRequestReleased()) {
+                                onLoadSuccess();
+                            }
+                        } finally {
+                            flutterCodecData = null;
+                            flutterCodecFilePath = null;
+                            realResult = null;
+                        }
+                    }
+                });
+            }
+        });
+        return true;
     }
 
     @Override

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -22,8 +23,9 @@ void main() {
   setUp(() {
     TestWidgetsFlutterBinding.ensureInitialized();
 
-    platformChannel!.methodChannel
-        .setMockMethodCallHandler((MethodCall methodCall) async {
+    platformChannel!.methodChannel.setMockMethodCallHandler((
+      MethodCall methodCall,
+    ) async {
       calls.putIfAbsent(methodCall.method, () {
         return <MethodCall>[];
       });
@@ -32,8 +34,9 @@ void main() {
       return [{}];
     });
 
-    MethodChannel(platformChannel.eventChannel.name)
-        .setMockMethodCallHandler((MethodCall methodCall) async {
+    MethodChannel(platformChannel.eventChannel.name).setMockMethodCallHandler((
+      MethodCall methodCall,
+    ) async {
       switch (methodCall.method) {
         case 'listen':
         case 'cancel':
@@ -42,8 +45,9 @@ void main() {
       }
     });
 
-    PowerImageLoader.instance
-        .setup(PowerImageSetupOptions(renderingTypeTexture));
+    PowerImageLoader.instance.setup(
+      PowerImageSetupOptions(renderingTypeTexture),
+    );
   });
 
   group('options_test', () {
@@ -52,48 +56,57 @@ void main() {
     test('factory', () {
       // texture
       final PowerImageRequestOptions textureOptions = PowerImageRequestOptions(
-          src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
-          imageType: 'imageType',
-          imageWidth: 100.0,
-          imageHeight: 101.0,
-          renderingType: renderingTypeTexture);
+        src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
+        imageType: 'imageType',
+        imageWidth: 100.0,
+        imageHeight: 101.0,
+        renderingType: renderingTypeTexture,
+      );
 
-      PowerImageProvider textureProvider =
-          PowerImageProvider.options(textureOptions);
+      PowerImageProvider textureProvider = PowerImageProvider.options(
+        textureOptions,
+      );
       expect(textureProvider.runtimeType == PowerTextureImageProvider, true);
 
       // external
       final PowerImageRequestOptions externalOptions = PowerImageRequestOptions(
-          src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
-          imageType: 'imageType',
-          imageWidth: 100.0,
-          imageHeight: 101.0,
-          renderingType: renderingTypeExternal);
-      PowerImageProvider externalProvider =
-          PowerImageProvider.options(externalOptions);
+        src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
+        imageType: 'imageType',
+        imageWidth: 100.0,
+        imageHeight: 101.0,
+        renderingType: renderingTypeExternal,
+      );
+      PowerImageProvider externalProvider = PowerImageProvider.options(
+        externalOptions,
+      );
       expect(externalProvider.runtimeType == PowerExternalImageProvider, true);
 
       // renderingType null
       final PowerImageRequestOptions renderingTypeNullOptions =
           PowerImageRequestOptions(
-              src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
-              imageType: 'imageType',
-              imageWidth: 100.0,
-              imageHeight: 101.0,
-              renderingType: null);
-      PowerImageProvider renderingTypeNullProvider =
-          PowerImageProvider.options(renderingTypeNullOptions);
-      expect(renderingTypeNullProvider.runtimeType == PowerTextureImageProvider,
-          true);
+            src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
+            imageType: 'imageType',
+            imageWidth: 100.0,
+            imageHeight: 101.0,
+            renderingType: null,
+          );
+      PowerImageProvider renderingTypeNullProvider = PowerImageProvider.options(
+        renderingTypeNullOptions,
+      );
+      expect(
+        renderingTypeNullProvider.runtimeType == PowerTextureImageProvider,
+        true,
+      );
 
       // renderingType unknown
       final PowerImageRequestOptions testRenderingTypeOptions =
           PowerImageRequestOptions(
-              src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
-              imageType: 'imageType',
-              imageWidth: 100.0,
-              imageHeight: 101.0,
-              renderingType: 'testRenderingType');
+            src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
+            imageType: 'imageType',
+            imageWidth: 100.0,
+            imageHeight: 101.0,
+            renderingType: 'testRenderingType',
+          );
       expect(() {
         PowerImageProvider.options(testRenderingTypeOptions);
       }, throwsA(isA<AssertionError>()));
@@ -102,47 +115,55 @@ void main() {
     test('==', () {
       // texture
       final PowerImageRequestOptions textureOptions1 = PowerImageRequestOptions(
-          src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
-          imageType: 'imageType',
-          imageWidth: 100.0,
-          imageHeight: 101.0,
-          renderingType: renderingTypeTexture);
+        src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
+        imageType: 'imageType',
+        imageWidth: 100.0,
+        imageHeight: 101.0,
+        renderingType: renderingTypeTexture,
+      );
 
-      PowerImageProvider textureProvider1 =
-          PowerImageProvider.options(textureOptions1);
+      PowerImageProvider textureProvider1 = PowerImageProvider.options(
+        textureOptions1,
+      );
 
       final PowerImageRequestOptions textureOptions2 = PowerImageRequestOptions(
-          src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
-          imageType: 'imageType',
-          imageWidth: 100.0,
-          imageHeight: 101.0,
-          renderingType: renderingTypeTexture);
+        src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
+        imageType: 'imageType',
+        imageWidth: 100.0,
+        imageHeight: 101.0,
+        renderingType: renderingTypeTexture,
+      );
 
-      PowerImageProvider textureProvider2 =
-          PowerImageProvider.options(textureOptions2);
+      PowerImageProvider textureProvider2 = PowerImageProvider.options(
+        textureOptions2,
+      );
 
       expect(textureProvider2 == textureProvider1, true);
 
       // external
       final PowerImageRequestOptions externalOptions1 =
           PowerImageRequestOptions(
-              src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
-              imageType: 'imageType',
-              imageWidth: 100.0,
-              imageHeight: 101.0,
-              renderingType: renderingTypeExternal);
-      PowerImageProvider externalProvider1 =
-          PowerImageProvider.options(externalOptions1);
+            src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
+            imageType: 'imageType',
+            imageWidth: 100.0,
+            imageHeight: 101.0,
+            renderingType: renderingTypeExternal,
+          );
+      PowerImageProvider externalProvider1 = PowerImageProvider.options(
+        externalOptions1,
+      );
 
       final PowerImageRequestOptions externalOptions2 =
           PowerImageRequestOptions(
-              src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
-              imageType: 'imageType',
-              imageWidth: 100.0,
-              imageHeight: 101.0,
-              renderingType: renderingTypeExternal);
-      PowerImageProvider externalProvider2 =
-          PowerImageProvider.options(externalOptions2);
+            src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
+            imageType: 'imageType',
+            imageWidth: 100.0,
+            imageHeight: 101.0,
+            renderingType: renderingTypeExternal,
+          );
+      PowerImageProvider externalProvider2 = PowerImageProvider.options(
+        externalOptions2,
+      );
 
       expect(externalProvider1 == externalProvider2, true);
     });
@@ -150,48 +171,56 @@ void main() {
     test('!=', () {
       // texture
       final PowerImageRequestOptions textureOptions1 = PowerImageRequestOptions(
-          src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
-          imageType: 'imageType',
-          imageWidth: 100.0,
-          imageHeight: 101.0,
-          renderingType: renderingTypeTexture);
+        src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
+        imageType: 'imageType',
+        imageWidth: 100.0,
+        imageHeight: 101.0,
+        renderingType: renderingTypeTexture,
+      );
 
-      PowerImageProvider textureProvider1 =
-          PowerImageProvider.options(textureOptions1);
+      PowerImageProvider textureProvider1 = PowerImageProvider.options(
+        textureOptions1,
+      );
 
       //same src different image size
       final PowerImageRequestOptions textureOptions2 = PowerImageRequestOptions(
-          src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
-          imageType: 'imageType',
-          imageWidth: 101.0,
-          imageHeight: 100.0,
-          renderingType: renderingTypeTexture);
+        src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
+        imageType: 'imageType',
+        imageWidth: 101.0,
+        imageHeight: 100.0,
+        renderingType: renderingTypeTexture,
+      );
 
-      PowerImageProvider textureProvider2 =
-          PowerImageProvider.options(textureOptions2);
+      PowerImageProvider textureProvider2 = PowerImageProvider.options(
+        textureOptions2,
+      );
 
       expect(textureProvider2 == textureProvider1, false);
 
       // external
       final PowerImageRequestOptions externalOptions1 =
           PowerImageRequestOptions(
-              src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
-              imageType: 'imageType',
-              imageWidth: 100.0,
-              imageHeight: 101.0,
-              renderingType: renderingTypeExternal);
-      PowerImageProvider externalProvider1 =
-          PowerImageProvider.options(externalOptions1);
+            src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
+            imageType: 'imageType',
+            imageWidth: 100.0,
+            imageHeight: 101.0,
+            renderingType: renderingTypeExternal,
+          );
+      PowerImageProvider externalProvider1 = PowerImageProvider.options(
+        externalOptions1,
+      );
 
       final PowerImageRequestOptions externalOptions2 =
           PowerImageRequestOptions(
-              src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
-              imageType: 'imageType',
-              imageWidth: 101.0,
-              imageHeight: 101.0,
-              renderingType: renderingTypeExternal);
-      PowerImageProvider externalProvider2 =
-          PowerImageProvider.options(externalOptions2);
+            src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
+            imageType: 'imageType',
+            imageWidth: 101.0,
+            imageHeight: 101.0,
+            renderingType: renderingTypeExternal,
+          );
+      PowerImageProvider externalProvider2 = PowerImageProvider.options(
+        externalOptions2,
+      );
 
       expect(externalProvider1 == externalProvider2, false);
 
@@ -200,32 +229,38 @@ void main() {
 
     test('load_success', () async {
       final PowerImageRequestOptions textureOptions1 = PowerImageRequestOptions(
-          src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
-          imageType: 'imageType',
-          imageWidth: 100.0,
-          imageHeight: 101.0,
-          renderingType: renderingTypeTexture);
+        src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
+        imageType: 'imageType',
+        imageWidth: 100.0,
+        imageHeight: 101.0,
+        renderingType: renderingTypeTexture,
+      );
 
-      PowerImageProvider textureProvider1 =
-          PowerImageProvider.options(textureOptions1);
+      PowerImageProvider textureProvider1 = PowerImageProvider.options(
+        textureOptions1,
+      );
 
       final ImageStreamCompleter completer = textureProvider1.loadImage(
-          textureProvider1, (_, {getTargetSize}) => throw UnimplementedError());
+        textureProvider1,
+        (_, {getTargetSize}) => throw UnimplementedError(),
+      );
       expect(completer.runtimeType == OneFrameImageStreamCompleter, true);
 
       const int textureId = 233;
       const int width = 1;
       const int height = 2;
       completer.addListener(
-          ImageStreamListener((ImageInfo image, bool synchronousCall) {
-        expect(image.runtimeType == PowerTextureImageInfo, true);
-        PowerTextureImageInfo textureImageInfo = image as PowerTextureImageInfo;
-        expect(textureImageInfo.image.width == 1, true);
-        expect(textureImageInfo.image.height == 1, true);
-        expect(textureImageInfo.textureId == textureId, true);
-        expect(textureImageInfo.width == width, true);
-        expect(textureImageInfo.height == height, true);
-      }));
+        ImageStreamListener((ImageInfo image, bool synchronousCall) {
+          expect(image.runtimeType == PowerTextureImageInfo, true);
+          PowerTextureImageInfo textureImageInfo =
+              image as PowerTextureImageInfo;
+          expect(textureImageInfo.image.width == 1, true);
+          expect(textureImageInfo.image.height == 1, true);
+          expect(textureImageInfo.textureId == textureId, true);
+          expect(textureImageInfo.width == width, true);
+          expect(textureImageInfo.height == height, true);
+        }),
+      );
 
       Map mockCompleteMap = {
         'eventName': 'onReceiveImageEvent',
@@ -233,13 +268,14 @@ void main() {
         'success': true,
         'textureId': textureId,
         'width': width,
-        'height': height
+        'height': height,
       };
 
       ServicesBinding.instance!.defaultBinaryMessenger.handlePlatformMessage(
         platformChannel!.eventChannel.name,
-        platformChannel.eventChannel.codec
-            .encodeSuccessEnvelope(mockCompleteMap),
+        platformChannel.eventChannel.codec.encodeSuccessEnvelope(
+          mockCompleteMap,
+        ),
         (_) {},
       );
       await Future.delayed(const Duration(milliseconds: 500), () {});
@@ -247,20 +283,26 @@ void main() {
 
     test('load_multiFrame_success', () async {
       final PowerImageRequestOptions textureOptions1 = PowerImageRequestOptions(
-          src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
-          imageType: 'imageType',
-          imageWidth: 100.0,
-          imageHeight: 101.0,
-          renderingType: renderingTypeTexture);
+        src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
+        imageType: 'imageType',
+        imageWidth: 100.0,
+        imageHeight: 101.0,
+        renderingType: renderingTypeTexture,
+      );
 
-      PowerImageProvider textureProvider1 =
-          PowerImageProvider.options(textureOptions1);
+      PowerImageProvider textureProvider1 = PowerImageProvider.options(
+        textureOptions1,
+      );
 
-      final ImageStreamCompleter? completer =
-          imageCache!.putIfAbsent(textureProvider1, () {
-        return textureProvider1.loadImage(textureProvider1,
-            (_, {getTargetSize}) => throw UnimplementedError());
-      });
+      final ImageStreamCompleter? completer = imageCache!.putIfAbsent(
+        textureProvider1,
+        () {
+          return textureProvider1.loadImage(
+            textureProvider1,
+            (_, {getTargetSize}) => throw UnimplementedError(),
+          );
+        },
+      );
       // final ImageStreamCompleter completer =
       // textureProvider1.load(textureProvider1, null);
       expect(completer.runtimeType == OneFrameImageStreamCompleter, true);
@@ -268,8 +310,10 @@ void main() {
       const int width = 1;
       const int height = 2;
 
-      ImageStreamListener listener =
-          ImageStreamListener((ImageInfo image, bool synchronousCall) {
+      ImageStreamListener listener = ImageStreamListener((
+        ImageInfo image,
+        bool synchronousCall,
+      ) {
         expect(image.runtimeType == PowerTextureImageInfo, true);
         PowerTextureImageInfo textureImageInfo = image as PowerTextureImageInfo;
         expect(textureImageInfo.image.width == 1, true);
@@ -288,13 +332,14 @@ void main() {
         'textureId': textureId,
         '_multiFrame': true,
         'width': width,
-        'height': height
+        'height': height,
       };
 
       ServicesBinding.instance!.defaultBinaryMessenger.handlePlatformMessage(
         platformChannel!.eventChannel.name,
-        platformChannel.eventChannel.codec
-            .encodeSuccessEnvelope(mockCompleteMap),
+        platformChannel.eventChannel.codec.encodeSuccessEnvelope(
+          mockCompleteMap,
+        ),
         (_) {},
       );
 
@@ -307,77 +352,210 @@ void main() {
       });
     });
 
+    test('load_flutterCodec_multiFrame_keeps_bounded_cache_entry', () async {
+      final PowerImageRequestOptions options = PowerImageRequestOptions(
+        src: PowerImageRequestOptionsSrcNormal(src: "animated.webp"),
+        imageType: 'imageType',
+        imageWidth: 100.0,
+        imageHeight: 101.0,
+        renderingType: renderingTypeTexture,
+      );
+      final PowerImageProvider provider = PowerImageProvider.options(options);
+      final ImageStreamCompleter completer = imageCache!.putIfAbsent(
+        provider,
+        () {
+          return provider.loadImage(
+            provider,
+            (_, {getTargetSize}) => throw UnimplementedError(),
+          );
+        },
+      )!;
+      final Completer<void> imageReceived = Completer<void>();
+      final ImageStreamListener listener = ImageStreamListener((
+        ImageInfo image,
+        bool synchronousCall,
+      ) {
+        if (!imageReceived.isCompleted) {
+          imageReceived.complete();
+        }
+      });
+      completer.addListener(listener);
+
+      final Map<String, dynamic> mockCompleteMap = <String, dynamic>{
+        'eventName': 'onReceiveImageEvent',
+        'uniqueKey': PowerImageLoader.completers.keys.toList()[0],
+        'success': true,
+        '_multiFrame': true,
+        'renderingBackend': 'flutterCodec',
+        'encodedData': Uint8List.fromList(<int>[1, 2, 3, 4]),
+        'width': 100,
+        'height': 101,
+        'targetWidth': 100,
+        'targetHeight': 101,
+      };
+      await ServicesBinding.instance!.defaultBinaryMessenger
+          .handlePlatformMessage(
+            platformChannel!.eventChannel.name,
+            platformChannel.eventChannel.codec.encodeSuccessEnvelope(
+              mockCompleteMap,
+            ),
+            (_) {},
+          );
+      await imageReceived.future;
+
+      completer.removeListener(listener);
+      await Future<void>.delayed(Duration.zero);
+      expect(imageCache!.containsKey(provider), true);
+
+      // The entry is still bounded by ImageCache and remains evictable.
+      expect(imageCache!.evict(provider), true);
+    });
+
     test('load_error', () {
       final PowerImageRequestOptions textureOptions1 = PowerImageRequestOptions(
-          src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
-          imageType: 'imageType',
-          imageWidth: 100.0,
-          imageHeight: 101.0,
-          renderingType: renderingTypeTexture);
+        src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),
+        imageType: 'imageType',
+        imageWidth: 100.0,
+        imageHeight: 101.0,
+        renderingType: renderingTypeTexture,
+      );
 
       FlutterError.onError = (FlutterErrorDetails details) {
         throw Error();
       };
 
-      PowerImageProvider textureProvider1 =
-          PowerImageProvider.options(textureOptions1);
+      PowerImageProvider textureProvider1 = PowerImageProvider.options(
+        textureOptions1,
+      );
 
       final ImageStreamCompleter completer = textureProvider1.loadImage(
-          textureProvider1, (_, {getTargetSize}) => throw UnimplementedError());
+        textureProvider1,
+        (_, {getTargetSize}) => throw UnimplementedError(),
+      );
       expect(completer.runtimeType == OneFrameImageStreamCompleter, true);
 
       final Map mockCompleteMap = {
         'eventName': 'onReceiveImageEvent',
         'uniqueKey': PowerImageLoader.completers.keys.toList()[0],
         'success': false,
-        'textureId': 0
+        'textureId': 0,
       };
 
       completer.addListener(
-          ImageStreamListener((ImageInfo image, bool synchronousCall) {},
-              onError: (dynamic exception, StackTrace? stackTrace) {
-        expect(exception.runtimeType == PowerImageLoadException, true);
-        PowerImageLoadException powerImageLoadException = exception;
-        expect(mapEquals(powerImageLoadException.nativeResult, mockCompleteMap),
-            true);
-      }));
+        ImageStreamListener(
+          (ImageInfo image, bool synchronousCall) {},
+          onError: (dynamic exception, StackTrace? stackTrace) {
+            expect(exception.runtimeType == PowerImageLoadException, true);
+            PowerImageLoadException powerImageLoadException = exception;
+            expect(
+              mapEquals(powerImageLoadException.nativeResult, mockCompleteMap),
+              true,
+            );
+          },
+        ),
+      );
 
       ServicesBinding.instance!.defaultBinaryMessenger.handlePlatformMessage(
         platformChannel!.eventChannel.name,
-        platformChannel.eventChannel.codec
-            .encodeSuccessEnvelope(mockCompleteMap),
+        platformChannel.eventChannel.codec.encodeSuccessEnvelope(
+          mockCompleteMap,
+        ),
         (_) {},
       );
     });
   });
 
   test('PowerExternalImageProvider', () {
-    PowerExternalImageProvider provider =
-        PowerExternalImageProvider(testRequestOptions());
+    PowerExternalImageProvider provider = PowerExternalImageProvider(
+      testRequestOptions(),
+    );
 
     expect(
-        () => provider.createImageInfo({
-              'handle': 0,
-              'length': -1,
-              'width': 0,
-              'height': 0,
-              'rowBytes': 0
-            }),
-        throwsA(isA<ArgumentError>()));
-  });
-
-  test('PowerTextureImageProvider', () {
-    PowerTextureImageProvider provider =
-        PowerTextureImageProvider(testRequestOptions());
-    PowerImageRequest request = PowerImageRequest.create(testRequestOptions());
-    provider.dispose();
-
-    expect(
-      calls['releaseImageRequests'],
-      <Matcher>[
-        isMethodCall('releaseImageRequests', arguments: [request.encode()])
-      ],
+      () => provider.createImageInfo({
+        'handle': 0,
+        'length': -1,
+        'width': 0,
+        'height': 0,
+        'rowBytes': 0,
+      }),
+      throwsA(isA<ArgumentError>()),
     );
   });
 
+  test('PowerTextureImageProvider', () {
+    PowerTextureImageProvider provider = PowerTextureImageProvider(
+      testRequestOptions(),
+    );
+    PowerImageRequest request = PowerImageRequest.create(testRequestOptions());
+    provider.dispose();
+
+    expect(calls['releaseImageRequests'], <Matcher>[
+      isMethodCall('releaseImageRequests', arguments: [request.encode()]),
+    ]);
+  });
+
+  test('PowerTextureImageProvider creates Flutter codec metadata', () async {
+    PowerTextureImageProvider provider = PowerTextureImageProvider(
+      testRequestOptions(),
+    );
+    Uint8List encodedData = Uint8List.fromList(<int>[1, 2, 3, 4]);
+
+    ImageInfo imageInfo = await Future<ImageInfo>.value(
+      provider.createImageInfo(<String, dynamic>{
+        'renderingBackend': 'flutterCodec',
+        'encodedData': encodedData,
+        'width': 512,
+        'height': 512,
+        'targetWidth': 420,
+        'targetHeight': 420,
+      }),
+    );
+
+    expect(imageInfo, isA<PowerFlutterCodecImageInfo>());
+    PowerFlutterCodecImageInfo codecInfo =
+        imageInfo as PowerFlutterCodecImageInfo;
+    expect(codecInfo.encodedData, same(encodedData));
+    expect(codecInfo.width, 512);
+    expect(codecInfo.height, 512);
+    expect(codecInfo.targetWidth, 420);
+    expect(codecInfo.targetHeight, 420);
+    expect(codecInfo.sizeBytes, encodedData.lengthInBytes);
+
+    PowerFlutterCodecImageInfo clone =
+        codecInfo.clone() as PowerFlutterCodecImageInfo;
+    expect(clone.encodedData, same(encodedData));
+    expect(clone.targetWidth, 420);
+    expect(clone.targetHeight, 420);
+    clone.dispose();
+    codecInfo.dispose();
+  });
+
+  test('PowerTextureImageProvider creates file codec metadata', () async {
+    PowerTextureImageProvider provider = PowerTextureImageProvider(
+      testRequestOptions(),
+    );
+
+    ImageInfo imageInfo = await Future<ImageInfo>.value(
+      provider.createImageInfo(<String, dynamic>{
+        'renderingBackend': 'flutterCodec',
+        'encodedFilePath': '/cache/animated.webp',
+        'width': 512,
+        'height': 512,
+        'targetWidth': 420,
+        'targetHeight': 420,
+      }),
+    );
+
+    PowerFlutterCodecImageInfo codecInfo =
+        imageInfo as PowerFlutterCodecImageInfo;
+    expect(codecInfo.encodedData, isNull);
+    expect(codecInfo.encodedFilePath, '/cache/animated.webp');
+    expect(codecInfo.sizeBytes, 0);
+
+    PowerFlutterCodecImageInfo clone =
+        codecInfo.clone() as PowerFlutterCodecImageInfo;
+    expect(clone.encodedFilePath, codecInfo.encodedFilePath);
+    clone.dispose();
+    codecInfo.dispose();
+  });
 }

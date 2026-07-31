@@ -5,6 +5,7 @@ import android.os.SystemClock;
 import com.taobao.power_image.PowerImageEngineContext;
 import com.taobao.power_image.PowerImageDiagnostics;
 import com.taobao.power_image.dispatcher.PowerImageDispatcher;
+import com.taobao.power_image.loader.FlutterEncodedImage;
 import com.taobao.power_image.loader.FlutterMultiFrameImage;
 import com.taobao.power_image.loader.PowerImageLoader;
 import com.taobao.power_image.loader.PowerImageLoaderProtocol;
@@ -216,7 +217,8 @@ public abstract class PowerImageBaseRequest {
         encodedTask.put("state", imageTaskState);
         if (realResult != null
                 && realResult.success
-                && realResult.image instanceof FlutterMultiFrameImage) {
+                && (realResult.image instanceof FlutterMultiFrameImage
+                        || realResult.image instanceof FlutterEncodedImage)) {
             encodedTask.put("_multiFrame", true);
         }
         return encodedTask;

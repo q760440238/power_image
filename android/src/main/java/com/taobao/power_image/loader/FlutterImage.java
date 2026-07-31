@@ -8,6 +8,8 @@ import android.view.Surface;
 
 import com.taobao.power_image.PowerImageDiagnostics;
 
+import java.nio.ByteBuffer;
+
 /**
  */
 public abstract class FlutterImage {
@@ -26,6 +28,12 @@ public abstract class FlutterImage {
     
     public FlutterImage(Drawable drawable) {
         this(drawable, false);
+    }
+
+    /** Constructor for encoded-only images that never allocate a Drawable. */
+    protected FlutterImage() {
+        drawable = null;
+        needRecycle = false;
     }
 
     /**
@@ -94,6 +102,31 @@ public abstract class FlutterImage {
      * Pauses or resumes animated images. Single-frame images ignore this state.
      */
     public void setAnimationActive(boolean active) {
+    }
+
+    /** Returns the original compressed image when it is cheaply available. */
+    public byte[] getEncodedData() {
+        return null;
+    }
+
+    /** Returns a readable compressed image file when one is already cached. */
+    public String getEncodedFilePath() {
+        return null;
+    }
+
+    /** Copies a decoder-owned buffer without changing its position. */
+    protected static byte[] copyEncodedBuffer(ByteBuffer source) {
+        if (source == null) {
+            return null;
+        }
+        ByteBuffer copy = source.asReadOnlyBuffer();
+        copy.rewind();
+        if (!copy.hasRemaining()) {
+            return null;
+        }
+        byte[] bytes = new byte[copy.remaining()];
+        copy.get(bytes);
+        return bytes;
     }
 
     public final void setDiagnosticRequestId(String requestId) {

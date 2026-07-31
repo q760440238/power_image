@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/widgets.dart';
 
 import 'package:power_image_ext/image_ext.dart';
@@ -73,7 +75,9 @@ class PowerTextureState extends State<PowerTextureImage>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.provider.options != widget.provider.options) {
       PowerImageLoader.instance.removeTextureVisibility(
-          oldWidget.provider.options, _visibilityOwner);
+        oldWidget.provider.options,
+        _visibilityOwner,
+      );
       _updateAnimationState();
     }
   }
@@ -90,15 +94,20 @@ class PowerTextureState extends State<PowerTextureImage>
   }
 
   void _updateAnimationState() {
-    PowerImageLoader.instance.updateTextureVisibility(widget.provider.options,
-        _visibilityOwner, _tickerActive && _applicationActive);
+    PowerImageLoader.instance.updateTextureVisibility(
+      widget.provider.options,
+      _visibilityOwner,
+      _tickerActive && _applicationActive,
+    );
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    PowerImageLoader.instance
-        .removeTextureVisibility(widget.provider.options, _visibilityOwner);
+    PowerImageLoader.instance.removeTextureVisibility(
+      widget.provider.options,
+      _visibilityOwner,
+    );
     super.dispose();
   }
 
@@ -120,13 +129,46 @@ class PowerTextureState extends State<PowerTextureImage>
 
   Widget buildImage(BuildContext context, ImageInfo? imageInfo) {
     if (imageInfo == null || imageInfo is! PowerTextureImageInfo) {
-      return SizedBox(
-        width: widget.width,
-        height: widget.height,
-      );
+      return SizedBox(width: widget.width, height: widget.height);
     }
 
     PowerTextureImageInfo textureImageInfo = imageInfo;
+    if (textureImageInfo is PowerFlutterCodecImageInfo) {
+      if (!_tickerActive || !_applicationActive) {
+        return SizedBox(width: widget.width, height: widget.height);
+      }
+      final String? encodedFilePath = textureImageInfo.encodedFilePath;
+      if (encodedFilePath != null) {
+        return Image.file(
+          File(encodedFilePath),
+          width: widget.width,
+          height: widget.height,
+          fit: widget.fit,
+          alignment: widget.alignment,
+          errorBuilder: widget.errorBuilder,
+          excludeFromSemantics: true,
+          gaplessPlayback: true,
+          cacheWidth: _validDecodeDimension(textureImageInfo.targetWidth),
+          cacheHeight: _validDecodeDimension(textureImageInfo.targetHeight),
+        );
+      }
+      final List<int>? encodedData = textureImageInfo.encodedData;
+      if (encodedData == null) {
+        return SizedBox(width: widget.width, height: widget.height);
+      }
+      return Image.memory(
+        textureImageInfo.encodedData!,
+        width: widget.width,
+        height: widget.height,
+        fit: widget.fit,
+        alignment: widget.alignment,
+        errorBuilder: widget.errorBuilder,
+        excludeFromSemantics: true,
+        gaplessPlayback: true,
+        cacheWidth: _validDecodeDimension(textureImageInfo.targetWidth),
+        cacheHeight: _validDecodeDimension(textureImageInfo.targetHeight),
+      );
+    }
     return ClipRect(
       child: SizedBox(
         child: FittedBox(
@@ -135,14 +177,16 @@ class PowerTextureState extends State<PowerTextureImage>
           child: SizedBox(
             width: textureImageInfo.width?.toDouble() ?? widget.width,
             height: textureImageInfo.height?.toDouble() ?? widget.height,
-            child: Texture(
-              textureId: textureImageInfo.textureId!,
-            ),
+            child: Texture(textureId: textureImageInfo.textureId!),
           ),
         ),
         width: widget.width,
         height: widget.height,
       ),
     );
+  }
+
+  int? _validDecodeDimension(int? value) {
+    return value != null && value > 0 ? value : null;
   }
 }

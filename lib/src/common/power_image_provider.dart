@@ -14,16 +14,19 @@ abstract class PowerImageProvider extends ImageProviderExt<PowerImageProvider> {
     /// renderingType null case
     if (options.renderingType == null) {
       options = PowerImageRequestOptions(
-          src: options.src,
-          imageType: options.imageType,
-          renderingType: PowerImageLoader.instance.globalRenderType,
-          imageWidth: options.imageWidth,
-          imageHeight: options.imageHeight);
+        src: options.src,
+        imageType: options.imageType,
+        renderingType: PowerImageLoader.instance.globalRenderType,
+        imageWidth: options.imageWidth,
+        imageHeight: options.imageHeight,
+      );
     }
 
     /// must use one of renderingTypeExternal \ renderingTypeTexture
-    assert(options.renderingType == renderingTypeExternal ||
-        options.renderingType == renderingTypeTexture);
+    assert(
+      options.renderingType == renderingTypeExternal ||
+          options.renderingType == renderingTypeTexture,
+    );
     if (options.renderingType == renderingTypeExternal) {
       return PowerExternalImageProvider(options);
     } else {
@@ -39,7 +42,9 @@ abstract class PowerImageProvider extends ImageProviderExt<PowerImageProvider> {
 
   @override
   ImageStreamCompleter loadImage(
-      PowerImageProvider key, ImageDecoderCallback decode) {
+    PowerImageProvider key,
+    ImageDecoderCallback decode,
+  ) {
     _completer = OneFrameImageStreamCompleter(_loadAsync(key));
     return _completer!;
   }
@@ -48,14 +53,18 @@ abstract class PowerImageProvider extends ImageProviderExt<PowerImageProvider> {
 
   Future<ImageInfo> _loadAsync(PowerImageProvider key) async {
     try {
-      PowerImageCompleter powerImageCompleter =
-          PowerImageLoader.instance.loadImage(options);
+      PowerImageCompleter powerImageCompleter = PowerImageLoader.instance
+          .loadImage(options);
       Map map = await powerImageCompleter.completer!.future;
       bool? success = map['success'];
 
-      // remove multiFrame image cache On Last Listener Removed
+      // Native animated textures own a SurfaceProducer and must be released as
+      // soon as they leave the widget tree. Flutter-codec animations do not own
+      // a texture; keeping their metadata in the bounded ImageCache avoids
+      // restarting the native request and Glide disk lookup on every re-entry.
       bool? isMultiFrame = map['_multiFrame'];
-      if (isMultiFrame == true) {
+      final bool usesFlutterCodec = map['renderingBackend'] == 'flutterCodec';
+      if (isMultiFrame == true && !usesFlutterCodec) {
         _completer!.addOnLastListenerRemovedCallback(() {
           scheduleMicrotask(() {
             PaintingBinding.instance!.imageCache!.evict(key);
@@ -68,8 +77,9 @@ abstract class PowerImageProvider extends ImageProviderExt<PowerImageProvider> {
         // The network may be only temporarily unavailable, or the file will be
         // added on the server later. Avoid having future calls to resolve
         // fail to check the network again.
-        final PowerImageLoadException exception =
-            PowerImageLoadException(nativeResult: map);
+        final PowerImageLoadException exception = PowerImageLoadException(
+          nativeResult: map,
+        );
         PowerImageMonitor.instance().anErrorOccurred(exception);
         throw exception;
       }
@@ -116,9 +126,9 @@ class PowerImageLoadException implements Exception {
   /// Creates a [PowerImageLoadException] with the specified native State [state]
   /// and request [uniqueKey].
   PowerImageLoadException({required this.nativeResult})
-      : assert(nativeResult != null),
-        _message =
-            'Power Image request failed. For details, see the variable nativeResult';
+    : assert(nativeResult != null),
+      _message =
+          'Power Image request failed. For details, see the variable nativeResult';
 
   /// 0 = {map entry} "success" -> false
   /// 1 = {map entry} "uniqueKey" -> "{src: http://img.alicdn.com//bao//uploaded//i2//O1CN01SNnaus2KLND4UQngH_!!0-fleamarket.jpg}_imageTyp..."

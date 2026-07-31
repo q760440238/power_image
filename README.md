@@ -94,8 +94,11 @@ the logs with `adb logcat -s PowerImage` while diagnosing performance.
 
 ### Android animated image adapters
 
-Animated GIF and WebP draw their `Drawable` directly into a Flutter
-`SurfaceProducer`; frames are coalesced at VSync and stale frames are dropped.
+Animated GIF and custom animated `Drawable` adapters draw directly into a
+Flutter `SurfaceProducer`; frames are coalesced at VSync and stale frames are
+dropped. The Android example keeps network WebP as a compressed Glide cache
+file and delegates animation decoding to Flutter, avoiding one native decoder
+and triple-buffered Surface per image.
 
 
 
