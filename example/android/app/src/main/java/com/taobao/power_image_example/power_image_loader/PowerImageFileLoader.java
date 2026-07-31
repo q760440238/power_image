@@ -34,7 +34,9 @@ public class PowerImageFileLoader implements PowerImageLoaderProtocol {
             return;
         }
         Uri asset = Uri.parse("file://" + name);
-        Glide.with(context).asDrawable().load(asset).listener(new RequestListener<Drawable>() {
+        PowerImageGlideResult.targetSize(
+                Glide.with(context).asDrawable().load(asset), request)
+                .listener(new RequestListener<Drawable>() {
             @Override
             public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {
                 response.onResult(PowerImageResult.genFailRet("Native加载失败: " + (e != null ? e.getMessage() : "null")));

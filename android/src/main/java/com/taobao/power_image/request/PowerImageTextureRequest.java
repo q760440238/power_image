@@ -9,23 +9,27 @@ import com.taobao.power_image.loader.FlutterImage;
 import com.taobao.power_image.loader.PowerImageResult;
 
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Method;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.flutter.view.TextureRegistry;
 
 /**
  * created by Muke on 2021/7/27
  */
-public class PowerImageTextureRequest extends PowerImageBaseRequest {
+public class PowerImageTextureRequest extends PowerImageBaseRequest
+        implements TextureRegistry.SurfaceProducer.Callback {
     private static final String TAG = "PowerImageTextureRequest";
 
     public static final int MAX_RESIZE_HEIGHT = 1920;
     public static final int MAX_RESIZE_WIDTH = 1920;
 
     private final WeakReference<TextureRegistry> textureRegistryWrf;
+    private final AtomicBoolean loadSuccessSent = new AtomicBoolean(false);
     private volatile boolean stopped;
-    private volatile TextureRegistry.SurfaceTextureEntry textureEntry;
-    private volatile Surface surface;
+    private volatile boolean surfaceAvailable;
+    private volatile TextureRegistry.SurfaceProducer textureEntry;
     private volatile int imageTextureWidth;
     private volatile int imageTextureHeight;
     private int bitmapWidth;
@@ -66,7 +70,9 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest {
                 TextureRegistry textureRegistry = textureRegistryWrf.get();
                 if (textureEntry == null && textureRegistry != null) {
                     // 纹理创建，需要运行在有Looper的线程
-                    textureEntry = textureRegistry.createSurfaceTexture();
+                    textureEntry = createSurfaceProducer(textureRegistry);
+                    surfaceAvailable = true;
+                    textureEntry.setCallback(PowerImageTextureRequest.this);
                 }
                 if (textureEntry == null) {
                     onLoadFailed(TAG + ":onLoadResult SurfaceTextureEntry create failed");
@@ -86,35 +92,33 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest {
     @Override
     public boolean stopTask() {
         stopped = true;
+        surfaceAvailable = false;
         imageTaskState = REQUEST_STATE_RELEASE_SUCCEED;
         textureRegistryWrf.clear();
 
-        // 延迟2S 释放 纹理资源
         Runnable runnable = new Runnable() {
             @Override
             public void run() {
-                if (textureEntry != null) {
-                    synchronized (textureEntry) {
+                TextureRegistry.SurfaceProducer entry = textureEntry;
+                if (entry != null) {
+                    synchronized (entry) {
                         try {
-                            if (textureEntry != null) {
-                                textureEntry.release();
+                            if (textureEntry == entry) {
                                 textureEntry = null;
-                                if(realResult.image != null){
-                                    realResult.image.release();
-                                }
-                            }
-                            if (surface != null) {
-                                surface.release();
-                                surface = null;
+                                entry.setCallback(null);
+                                entry.release();
                             }
                         } catch (Exception e) {
                         }
                     }
                 }
+                if (realResult != null && realResult.image != null) {
+                    realResult.image.release();
+                }
             }
         };
 
-        PowerImageDispatcher.getInstance().runOnMainThreadDelayed(runnable, 2000);
+        PowerImageDispatcher.getInstance().runOnMainThread(runnable);
         return true;
     }
 
@@ -123,10 +127,39 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest {
         Map<String, Object> encodedRequest = super.encode();
         encodedRequest.put("width", bitmapWidth);
         encodedRequest.put("height", bitmapHeight);
-        if (textureEntry != null) {
-            encodedRequest.put("textureId", textureEntry.id());
+        TextureRegistry.SurfaceProducer entry = textureEntry;
+        if (entry != null) {
+            encodedRequest.put("textureId", entry.id());
         }
         return encodedRequest;
+    }
+
+    @Override
+    public void onSurfaceCreated() {
+        onSurfaceAvailable();
+    }
+
+    // No @Override: this callback was added after Flutter 3.24.
+    public void onSurfaceAvailable() {
+        surfaceAvailable = true;
+        PowerImageResult result = realResult;
+        if (!stopped && result != null && result.image != null && result.image.isValid()) {
+            performDraw(result.image);
+        }
+    }
+
+    @Override
+    public void onSurfaceDestroyed() {
+        onSurfaceCleanup();
+    }
+
+    // No @Override: this callback was added after Flutter 3.24.
+    public void onSurfaceCleanup() {
+        surfaceAvailable = false;
+        PowerImageResult result = realResult;
+        if (result != null && result.image != null) {
+            result.image.onSurfaceCleanup();
+        }
     }
 
     // 独立线程中完成纹理绘制工作
@@ -134,46 +167,57 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest {
         PowerImageDispatcher.getInstance().runOnWorkThread(new Runnable() {
             @Override
             public void run() {
-                if (textureEntry == null || stopped || image == null) {
-                    onLoadFailed(TAG + ":performDraw "
-                            + (textureEntry == null ? "textureEntry:null " : "")
-                            + (stopped ? "stopped:true " : "")
-                            + (image == null ? "image:null " : ""));
+                final TextureRegistry.SurfaceProducer entry = textureEntry;
+                if (entry == null || stopped || !surfaceAvailable || image == null) {
                     return;
                 }
-                synchronized (textureEntry) {
-                    if (textureEntry == null || stopped) {
-                        onLoadFailed(TAG + ":performDraw synchronized"
-                                + (textureEntry == null ? "textureEntry:null " : "")
-                                + (stopped ? "stopped:true " : ""));
+                synchronized (entry) {
+                    if (textureEntry != entry || stopped || !surfaceAvailable) {
                         return;
                     }
 
                     // 显示纹理
                     checkImageTextureSize(image);
-
-                    if (surface == null) {
-                        surface = new Surface(textureEntry.surfaceTexture());
-                    }
-                    textureEntry.surfaceTexture().setDefaultBufferSize(imageTextureWidth,
-                            imageTextureHeight);
+                    entry.setSize(imageTextureWidth, imageTextureHeight);
+                    Surface surface = entry.getSurface();
                     if (surface != null && surface.isValid()) {
                         try {
                             Rect destRect = new Rect(0, 0, imageTextureWidth, imageTextureHeight);
-                            image.draw(surface, destRect);
-                            onLoadSuccess();
+                            image.draw(new FlutterImage.SurfaceProvider() {
+                                @Override
+                                public Surface getSurface() {
+                                    if (textureEntry != entry || stopped || !surfaceAvailable) {
+                                        return null;
+                                    }
+                                    return entry.getSurface();
+                                }
+                            }, destRect);
+                            if (loadSuccessSent.compareAndSet(false, true)) {
+                                onLoadSuccess();
+                            }
                         } catch (Exception e) {
                             e.printStackTrace();
                             onLoadFailed(TAG + ":performDraw drawBitmap " + e.getMessage());
                         }
-                    } else {
-                        onLoadFailed(TAG + ":performDraw drawBitmap "
-                                + (surface == null ? "surface:null " : "")
-                                + (surface != null && !surface.isValid() ? "surface invalid" : ""));
                     }
                 }
             }
         });
+    }
+
+    private static TextureRegistry.SurfaceProducer createSurfaceProducer(
+            TextureRegistry textureRegistry) {
+        try {
+            Class<?> lifecycleClass =
+                    Class.forName("io.flutter.view.TextureRegistry$SurfaceLifecycle");
+            Object lifecycle = lifecycleClass.getField("resetInBackground").get(null);
+            Method method = TextureRegistry.class.getMethod(
+                    "createSurfaceProducer", lifecycleClass);
+            return (TextureRegistry.SurfaceProducer) method.invoke(textureRegistry, lifecycle);
+        } catch (ReflectiveOperationException | LinkageError | SecurityException ignored) {
+            // Flutter 3.24 exposes SurfaceProducer through the no-argument API.
+            return textureRegistry.createSurfaceProducer();
+        }
     }
 
     //  确保图片的大小不超过系统的纹理大小的限制

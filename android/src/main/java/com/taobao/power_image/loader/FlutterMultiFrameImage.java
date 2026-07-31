@@ -3,8 +3,7 @@ package com.taobao.power_image.loader;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.PorterDuffXfermode;
+import android.graphics.PorterDuff;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.os.Handler;
@@ -12,6 +11,7 @@ import android.os.HandlerThread;
 import android.os.SystemClock;
 import android.view.Surface;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 
 
 /**
@@ -31,15 +31,31 @@ public abstract class FlutterMultiFrameImage extends FlutterImage implements Dra
         gAnimateScheduler = new Handler(schedulerThead.getLooper());
     }
 
-    private volatile Surface surface;
+    private volatile Surface fixedSurface;
+    private volatile SurfaceProvider surfaceProvider;
     private volatile Rect destRect;
 
     private volatile boolean released = false;
+    private boolean started = false;
 
-    private final Paint painter = new Paint();
-
-    private final Rect srcRect;
-    private boolean needRecycle=false;
+    private final AtomicBoolean frameDirty = new AtomicBoolean(false);
+    private final AtomicBoolean frameTaskScheduled = new AtomicBoolean(false);
+    private final Runnable renderFrameTask = new Runnable() {
+        @Override
+        public void run() {
+            try {
+                frameDirty.set(false);
+                renderCurrentFrame();
+            } catch (Throwable t) {
+                t.printStackTrace();
+            } finally {
+                frameTaskScheduled.set(false);
+                if (frameDirty.get() && !released) {
+                    scheduleFrameRender();
+                }
+            }
+        }
+    };
 
     public FlutterMultiFrameImage(Drawable drawable) {
         this(drawable,  false);
@@ -48,8 +64,6 @@ public abstract class FlutterMultiFrameImage extends FlutterImage implements Dra
     public FlutterMultiFrameImage(Drawable drawable, boolean needRecycle) {
         super(drawable,  needRecycle);
         drawable.setCallback(this);
-
-        srcRect = new Rect(0, 0, getWidth(), getHeight());
     }
 
     @Override
@@ -58,38 +72,33 @@ public abstract class FlutterMultiFrameImage extends FlutterImage implements Dra
             return;
         }
 
-        runOnScheduler(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    final Bitmap newly = getCurrentFrame(who);
-                    if (newly == null) {
-                        return;
-                    }
-
-                    if (!surface.isValid()) {
-                        return;
-                    }
-
-                    final Canvas canvas = surface.lockCanvas(null);
-                    if (canvas == null) {
-                        return;
-                    }
-
-                    painter.setXfermode(new PorterDuffXfermode(android.graphics.PorterDuff.Mode.CLEAR));
-                    canvas.drawPaint(painter);
-                    painter.setXfermode(new PorterDuffXfermode(android.graphics.PorterDuff.Mode.DST_OVER));
-
-                    canvas.drawBitmap(newly, srcRect, destRect, painter);
-                    surface.unlockCanvasAndPost(canvas);
-                } catch (Throwable t) {
-                    t.printStackTrace();
-                }
-            }
-        }, true);
+        frameDirty.set(true);
+        scheduleFrameRender();
     }
 
-    public abstract Bitmap getCurrentFrame(Drawable who);
+    /**
+     * Returns a one-off snapshot for the external rendering path.
+     * Texture animations draw the Drawable directly and never retain this Bitmap.
+     */
+    @Deprecated
+    public Bitmap getCurrentFrame(Drawable who) {
+        final int width = getWidth();
+        final int height = getHeight();
+        if (who == null || width <= 0 || height <= 0) {
+            return null;
+        }
+
+        final Rect previousBounds = who.copyBounds();
+        final Bitmap frame = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        final Canvas canvas = new Canvas(frame);
+        try {
+            who.setBounds(0, 0, width, height);
+            who.draw(canvas);
+        } finally {
+            who.setBounds(previousBounds);
+        }
+        return frame;
+    }
 
     @Override
     public final void scheduleDrawable(Drawable who, Runnable what, long when) {
@@ -112,23 +121,63 @@ public abstract class FlutterMultiFrameImage extends FlutterImage implements Dra
             return;
         }
 
+        this.surfaceProvider = null;
+        this.fixedSurface = surface;
+        attachSurface(destRect);
+    }
 
-        this.destRect = destRect;
-        this.surface = surface;
+    @Override
+    public final void draw(SurfaceProvider surfaceProvider, Rect destRect) {
+        if (released) {
+            return;
+        }
 
+        this.fixedSurface = null;
+        this.surfaceProvider = surfaceProvider;
+        attachSurface(destRect);
+    }
 
-        final Canvas canvas = surface.lockCanvas(null);
-        canvas.drawColor(Color.argb(1, 255, 255, 255));
-        surface.unlockCanvasAndPost(canvas);
-
+    private void attachSurface(Rect destRect) {
+        this.destRect = new Rect(destRect);
+        frameDirty.set(true);
+        scheduleFrameRender();
         runOnScheduler(new Runnable() {
             @Override
             public void run() {
-                if (drawable != null) {
+                if (drawable != null && !started) {
+                    started = true;
                     onStart(drawable);
                 }
             }
         }, false);
+    }
+
+    private void renderCurrentFrame() {
+        final Drawable currentDrawable = drawable;
+        final Rect currentDestRect = destRect;
+        final SurfaceProvider currentProvider = surfaceProvider;
+        final Surface surface = currentProvider != null
+                ? currentProvider.getSurface()
+                : fixedSurface;
+        if (released || currentDrawable == null || currentDestRect == null
+                || surface == null || !surface.isValid()) {
+            return;
+        }
+
+        final Canvas canvas = lockSurfaceCanvas(surface);
+        try {
+            canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+            currentDrawable.setBounds(currentDestRect);
+            currentDrawable.draw(canvas);
+        } finally {
+            surface.unlockCanvasAndPost(canvas);
+        }
+    }
+
+    private void scheduleFrameRender() {
+        if (frameTaskScheduled.compareAndSet(false, true)) {
+            gAnimateScheduler.post(renderFrameTask);
+        }
     }
 
     /**
@@ -137,26 +186,51 @@ public abstract class FlutterMultiFrameImage extends FlutterImage implements Dra
      */
     protected abstract void onStart(Drawable who);
 
+    protected void onStop(Drawable who) {
+    }
+
+    @Override
+    public final void onSurfaceCleanup() {
+        if (released) {
+            return;
+        }
+        surfaceProvider = null;
+        frameDirty.set(false);
+        runOnScheduler(new Runnable() {
+            @Override
+            public void run() {
+                if (surfaceProvider == null && drawable != null && started) {
+                    onStop(drawable);
+                    started = false;
+                }
+            }
+        }, false);
+    }
+
     /**
      * we should stop the gifDrawable and do some gc work
      */
     @Override
     public final void release() {
         released = true;
-
+        frameDirty.set(false);
+        gAnimateScheduler.removeCallbacks(renderFrameTask);
 
         runOnScheduler(new Runnable() {
             @Override
             public void run() {
                 if (drawable != null) {
+                    drawable.setCallback(null);
                     onRelease(drawable);
                     drawable = null;
                 }
 
-                if (surface != null) {
-                    surface.release();
-                    surface = null;
+                if (fixedSurface != null) {
+                    fixedSurface.release();
+                    fixedSurface = null;
                 }
+                surfaceProvider = null;
+                started = false;
             }
         }, false);
     }

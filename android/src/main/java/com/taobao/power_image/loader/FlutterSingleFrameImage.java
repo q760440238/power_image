@@ -52,9 +52,12 @@ public class FlutterSingleFrameImage extends FlutterImage {
 
     @Override
     public void draw(Surface surface, Rect destRect) {
-        final Canvas canvas = surface.lockCanvas(null);
-        canvas.drawBitmap(bitmap, srcRect, destRect, null);
-        surface.unlockCanvasAndPost(canvas);
+        final Canvas canvas = lockSurfaceCanvas(surface);
+        try {
+            canvas.drawBitmap(bitmap, srcRect, destRect, null);
+        } finally {
+            surface.unlockCanvasAndPost(canvas);
+        }
     }
 
     @Override

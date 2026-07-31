@@ -1,7 +1,9 @@
 package com.taobao.power_image.loader;
 
+import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.view.Surface;
 
 /**
@@ -9,6 +11,10 @@ import android.view.Surface;
 public abstract class FlutterImage {
     protected Drawable drawable;
     protected boolean needRecycle;
+
+    public interface SurfaceProvider {
+        Surface getSurface();
+    }
     
     public FlutterImage(Drawable drawable) {
         this(drawable, false);
@@ -46,6 +52,36 @@ public abstract class FlutterImage {
      * @param destRect
      */
     public abstract void draw(Surface surface, Rect destRect);
+
+    /**
+     * Draw using a Flutter-managed surface that may change during its lifetime.
+     */
+    public void draw(SurfaceProvider surfaceProvider, Rect destRect) {
+        if (surfaceProvider == null) {
+            return;
+        }
+        draw(surfaceProvider.getSurface(), destRect);
+    }
+
+    /**
+     * Called when Flutter temporarily destroys the backing surface.
+     */
+    public void onSurfaceCleanup() {
+    }
+
+    protected final Canvas lockSurfaceCanvas(Surface surface) {
+        if (surface == null || !surface.isValid()) {
+            throw new IllegalStateException("Surface is unavailable");
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                return surface.lockHardwareCanvas();
+            } catch (RuntimeException ignored) {
+                // Some Surface implementations do not support hardware canvases.
+            }
+        }
+        return surface.lockCanvas(null);
+    }
 
     /**
      * Returns the drawable's intrinsic width.
