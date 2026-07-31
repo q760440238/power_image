@@ -308,6 +308,57 @@ void main() {
       });
     });
 
+    test('load_flutterCodec_multiFrame_keeps_bounded_cache_entry', () async {
+      final PowerImageRequestOptions options = PowerImageRequestOptions(
+          src: PowerImageRequestOptionsSrcNormal(src: "animated.webp"),
+          imageType: 'imageType',
+          imageWidth: 100.0,
+          imageHeight: 101.0,
+          renderingType: renderingTypeTexture);
+      final PowerImageProvider provider = PowerImageProvider.options(options);
+      final ImageStreamCompleter completer =
+          imageCache!.putIfAbsent(provider, () {
+        return provider.loadImage(
+            provider, (_, {getTargetSize}) => throw UnimplementedError());
+      })!;
+      final Completer<void> imageReceived = Completer<void>();
+      final ImageStreamListener listener =
+          ImageStreamListener((ImageInfo image, bool synchronousCall) {
+        if (!imageReceived.isCompleted) {
+          imageReceived.complete();
+        }
+      });
+      completer.addListener(listener);
+
+      final Map<String, dynamic> mockCompleteMap = <String, dynamic>{
+        'eventName': 'onReceiveImageEvent',
+        'uniqueKey': PowerImageLoader.completers.keys.toList()[0],
+        'success': true,
+        '_multiFrame': true,
+        'renderingBackend': 'flutterCodec',
+        'encodedData': Uint8List.fromList(<int>[1, 2, 3, 4]),
+        'width': 100,
+        'height': 101,
+        'targetWidth': 100,
+        'targetHeight': 101,
+      };
+      await ServicesBinding.instance!.defaultBinaryMessenger
+          .handlePlatformMessage(
+        platformChannel!.eventChannel.name,
+        platformChannel.eventChannel.codec
+            .encodeSuccessEnvelope(mockCompleteMap),
+        (_) {},
+      );
+      await imageReceived.future;
+
+      completer.removeListener(listener);
+      await Future<void>.delayed(Duration.zero);
+      expect(imageCache!.containsKey(provider), true);
+
+      // The entry is still bounded by ImageCache and remains evictable.
+      expect(imageCache!.evict(provider), true);
+    });
+
     test('load_error', () {
       final PowerImageRequestOptions textureOptions1 = PowerImageRequestOptions(
           src: PowerImageRequestOptionsSrcNormal(src: "srcValue"),

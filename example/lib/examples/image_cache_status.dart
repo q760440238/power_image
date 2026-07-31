@@ -17,6 +17,9 @@ class _ImageCacheStatusWidgetState extends State<ImageCacheStatusWidget> {
 
   void _needUpdate() {
     Future.delayed(const Duration(milliseconds: 100), () {
+      if (!mounted) {
+        return;
+      }
       setState(() {});
       _needUpdate();
     });

@@ -53,9 +53,13 @@ abstract class PowerImageProvider extends ImageProviderExt<PowerImageProvider> {
       Map map = await powerImageCompleter.completer!.future;
       bool? success = map['success'];
 
-      // remove multiFrame image cache On Last Listener Removed
+      // Native animated textures own a SurfaceProducer and must be released as
+      // soon as they leave the widget tree. Flutter-codec animations do not own
+      // a texture; keeping their metadata in the bounded ImageCache avoids
+      // restarting the native request and Glide disk lookup on every re-entry.
       bool? isMultiFrame = map['_multiFrame'];
-      if (isMultiFrame == true) {
+      final bool usesFlutterCodec = map['renderingBackend'] == 'flutterCodec';
+      if (isMultiFrame == true && !usesFlutterCodec) {
         _completer!.addOnLastListenerRemovedCallback(() {
           scheduleMicrotask(() {
             PaintingBinding.instance!.imageCache!.evict(key);
