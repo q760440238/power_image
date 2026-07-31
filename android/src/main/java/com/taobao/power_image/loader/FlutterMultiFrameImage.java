@@ -14,11 +14,9 @@ import android.view.Surface;
 
 
 
-import java.lang.ref.WeakReference;
-
 /**
  * created by wayne.xie on 2021/7/22
- * A MultiFrame Object。 such as format: gif、apng
+ * A MultiFrame Object。 such as format: gif、webp、apng
  */
 public abstract class FlutterMultiFrameImage extends FlutterImage implements Drawable.Callback {
 
@@ -32,9 +30,6 @@ public abstract class FlutterMultiFrameImage extends FlutterImage implements Dra
 
         gAnimateScheduler = new Handler(schedulerThead.getLooper());
     }
-
-
-    private WeakReference<Bitmap> curBitmapRef = new WeakReference<>(null);
 
     private volatile Surface surface;
     private volatile Rect destRect;
@@ -72,27 +67,21 @@ public abstract class FlutterMultiFrameImage extends FlutterImage implements Dra
                         return;
                     }
 
-                    if (newly != curBitmapRef.get()) {
-                        curBitmapRef = new WeakReference<>(newly);
-
-
-                        if (!surface.isValid()) {
-                            return;
-                        }
-
-                        final Canvas canvas = surface.lockCanvas(null);
-                        if (canvas == null) {
-                            return;
-                        }
-
-                        painter.setXfermode(new PorterDuffXfermode(android.graphics.PorterDuff.Mode.CLEAR));
-                        canvas.drawPaint(painter);
-                        painter.setXfermode(new PorterDuffXfermode(android.graphics.PorterDuff.Mode.DST_OVER));
-
-                        canvas.drawBitmap(newly, srcRect, destRect, painter);
-                        surface.unlockCanvasAndPost(canvas);
-
+                    if (!surface.isValid()) {
+                        return;
                     }
+
+                    final Canvas canvas = surface.lockCanvas(null);
+                    if (canvas == null) {
+                        return;
+                    }
+
+                    painter.setXfermode(new PorterDuffXfermode(android.graphics.PorterDuff.Mode.CLEAR));
+                    canvas.drawPaint(painter);
+                    painter.setXfermode(new PorterDuffXfermode(android.graphics.PorterDuff.Mode.DST_OVER));
+
+                    canvas.drawBitmap(newly, srcRect, destRect, painter);
+                    surface.unlockCanvasAndPost(canvas);
                 } catch (Throwable t) {
                     t.printStackTrace();
                 }

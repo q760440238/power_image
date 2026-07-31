@@ -38,15 +38,15 @@ abstract class PowerImageProvider extends ImageProviderExt<PowerImageProvider> {
   double scale;
 
   @override
-  ImageStreamCompleter load(PowerImageProvider key, DecoderCallback? decode) {
-    _completer = OneFrameImageStreamCompleter(_loadAsync(key, decode));
+  ImageStreamCompleter loadImage(
+      PowerImageProvider key, ImageDecoderCallback decode) {
+    _completer = OneFrameImageStreamCompleter(_loadAsync(key));
     return _completer!;
   }
 
   ImageStreamCompleter? _completer;
 
-  Future<ImageInfo> _loadAsync(
-      PowerImageProvider key, DecoderCallback? decode) async {
+  Future<ImageInfo> _loadAsync(PowerImageProvider key) async {
     try {
       PowerImageCompleter powerImageCompleter =
           PowerImageLoader.instance.loadImage(options);
@@ -56,12 +56,11 @@ abstract class PowerImageProvider extends ImageProviderExt<PowerImageProvider> {
       // remove multiFrame image cache On Last Listener Removed
       bool? isMultiFrame = map['_multiFrame'];
       if (isMultiFrame == true) {
-        _completer!
-          .addOnLastListenerRemovedCallback(() {
-            scheduleMicrotask(() {
-              PaintingBinding.instance!.imageCache!.evict(key);
-            });
+        _completer!.addOnLastListenerRemovedCallback(() {
+          scheduleMicrotask(() {
+            PaintingBinding.instance!.imageCache!.evict(key);
           });
+        });
       }
       _completer = null;
 
@@ -104,7 +103,7 @@ abstract class PowerImageProvider extends ImageProviderExt<PowerImageProvider> {
   }
 
   @override
-  int get hashCode => hashValues(options, scale);
+  int get hashCode => Object.hash(options, scale);
 
   @override
   String toString() => '$runtimeType("$options", scale: $scale)';
@@ -118,7 +117,8 @@ class PowerImageLoadException implements Exception {
   /// and request [uniqueKey].
   PowerImageLoadException({required this.nativeResult})
       : assert(nativeResult != null),
-        _message = 'Power Image request failed. For details, see the variable nativeResult';
+        _message =
+            'Power Image request failed. For details, see the variable nativeResult';
 
   /// 0 = {map entry} "success" -> false
   /// 1 = {map entry} "uniqueKey" -> "{src: http://img.alicdn.com//bao//uploaded//i2//O1CN01SNnaus2KLND4UQngH_!!0-fleamarket.jpg}_imageTyp..."

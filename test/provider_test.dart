@@ -210,7 +210,8 @@ void main() {
           PowerImageProvider.options(textureOptions1);
 
       final ImageStreamCompleter completer =
-          textureProvider1.load(textureProvider1, null);
+          textureProvider1.loadImage(
+              textureProvider1, (_, {getTargetSize}) => throw UnimplementedError());
       expect(completer.runtimeType == OneFrameImageStreamCompleter, true);
 
       const int textureId = 233;
@@ -257,7 +258,8 @@ void main() {
       PowerImageProvider.options(textureOptions1);
 
       final ImageStreamCompleter? completer = imageCache!.putIfAbsent(textureProvider1, ()  {
-        return textureProvider1.load(textureProvider1, null);
+        return textureProvider1.loadImage(
+            textureProvider1, (_, {getTargetSize}) => throw UnimplementedError());
       });
       // final ImageStreamCompleter completer =
       // textureProvider1.load(textureProvider1, null);
@@ -320,7 +322,8 @@ void main() {
           PowerImageProvider.options(textureOptions1);
 
       final ImageStreamCompleter completer =
-          textureProvider1.load(textureProvider1, null);
+          textureProvider1.loadImage(
+              textureProvider1, (_, {getTargetSize}) => throw UnimplementedError());
       expect(completer.runtimeType == OneFrameImageStreamCompleter, true);
 
       final Map mockCompleteMap = {

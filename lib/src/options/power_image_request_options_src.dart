@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
+
 ///
 /// this is abstract class for custom Src to native laoder
 ///
@@ -39,7 +40,7 @@ abstract class PowerImageRequestOptionsSrc {
 
   /// you need override these two method: == /  hashCode
   /// to ensure several PowerImageRequestOptionsSrc is Equal when you need use same cache
-  /// 
+  ///
   @override
   int get hashCode => throw UnimplementedError();
 }
@@ -71,8 +72,7 @@ class PowerImageRequestOptionsSrcAsset extends PowerImageRequestOptionsSrc {
   final String src;
   final String? package;
 
-  PowerImageRequestOptionsSrcAsset(
-      {required this.src, this.package});
+  PowerImageRequestOptionsSrcAsset({required this.src, this.package});
 
   @override
   Map<String, String?> encode() {
@@ -91,5 +91,5 @@ class PowerImageRequestOptionsSrcAsset extends PowerImageRequestOptionsSrc {
   }
 
   @override
-  int get hashCode => hashValues(src, package);
+  int get hashCode => Object.hash(src, package);
 }

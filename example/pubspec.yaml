@@ -6,7 +6,7 @@ description: Demonstrates how to use the power_image plugin.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
 environment:
-  sdk: '>=2.12.0 <3.0.0'
+  sdk: '>=2.12.0 <4.0.0'
 
 dependencies:
   flutter:
@@ -14,9 +14,9 @@ dependencies:
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.3
-  path_provider: 2.0.2
-  image_picker: ^0.8.0
+  cupertino_icons: ^1.0.9
+  path_provider: ^2.1.6
+  image_picker: ^1.2.3
   power_image:
 
 dependency_overrides:
