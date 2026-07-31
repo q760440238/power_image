@@ -6,11 +6,21 @@ import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.view.Surface;
 
+import com.taobao.power_image.PowerImageDiagnostics;
+
+import java.nio.ByteBuffer;
+
 /**
  */
 public abstract class FlutterImage {
+    private static final int CANVAS_MODE_UNKNOWN = 0;
+    private static final int CANVAS_MODE_HARDWARE = 1;
+    private static final int CANVAS_MODE_SOFTWARE = 2;
+
     protected Drawable drawable;
     protected boolean needRecycle;
+    private volatile int canvasMode = CANVAS_MODE_UNKNOWN;
+    private volatile String diagnosticRequestId;
 
     public interface SurfaceProvider {
         Surface getSurface();
@@ -18,6 +28,12 @@ public abstract class FlutterImage {
     
     public FlutterImage(Drawable drawable) {
         this(drawable, false);
+    }
+
+    /** Constructor for encoded-only images that never allocate a Drawable. */
+    protected FlutterImage() {
+        drawable = null;
+        needRecycle = false;
     }
 
     /**
@@ -47,6 +63,18 @@ public abstract class FlutterImage {
     public abstract void release();
 
     /**
+     * Releases the image and runs {@code onReleased} after no renderer can use
+     * the backing drawable anymore. Single-frame images release synchronously;
+     * animated images may wait for an in-flight surface draw to finish.
+     */
+    public void release(Runnable onReleased) {
+        release();
+        if (onReleased != null) {
+            onReleased.run();
+        }
+    }
+
+    /**
      * draw the actual bitmap to the surface with specific destRect
      * @param surface
      * @param destRect
@@ -67,6 +95,7 @@ public abstract class FlutterImage {
      * Called when Flutter temporarily destroys the backing surface.
      */
     public void onSurfaceCleanup() {
+        resetCanvasMode();
     }
 
     /**
@@ -75,18 +104,65 @@ public abstract class FlutterImage {
     public void setAnimationActive(boolean active) {
     }
 
+    /** Returns the original compressed image when it is cheaply available. */
+    public byte[] getEncodedData() {
+        return null;
+    }
+
+    /** Returns a readable compressed image file when one is already cached. */
+    public String getEncodedFilePath() {
+        return null;
+    }
+
+    /** Copies a decoder-owned buffer without changing its position. */
+    protected static byte[] copyEncodedBuffer(ByteBuffer source) {
+        if (source == null) {
+            return null;
+        }
+        ByteBuffer copy = source.asReadOnlyBuffer();
+        copy.rewind();
+        if (!copy.hasRemaining()) {
+            return null;
+        }
+        byte[] bytes = new byte[copy.remaining()];
+        copy.get(bytes);
+        return bytes;
+    }
+
+    public final void setDiagnosticRequestId(String requestId) {
+        diagnosticRequestId = requestId;
+    }
+
+    protected final String diagnosticRequestId() {
+        return diagnosticRequestId;
+    }
+
     protected final Canvas lockSurfaceCanvas(Surface surface) {
         if (surface == null || !surface.isValid()) {
             throw new IllegalStateException("Surface is unavailable");
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                && canvasMode != CANVAS_MODE_SOFTWARE) {
             try {
-                return surface.lockHardwareCanvas();
+                Canvas canvas = surface.lockHardwareCanvas();
+                canvasMode = CANVAS_MODE_HARDWARE;
+                return canvas;
             } catch (RuntimeException ignored) {
                 // Some Surface implementations do not support hardware canvases.
+                canvasMode = CANVAS_MODE_SOFTWARE;
+                PowerImageDiagnostics.debug(
+                        "canvas_fallback",
+                        diagnosticRequestId,
+                        "reason=" + ignored.getClass().getSimpleName());
             }
         }
-        return surface.lockCanvas(null);
+        Canvas canvas = surface.lockCanvas(null);
+        canvasMode = CANVAS_MODE_SOFTWARE;
+        return canvas;
+    }
+
+    protected final void resetCanvasMode() {
+        canvasMode = CANVAS_MODE_UNKNOWN;
     }
 
     /**

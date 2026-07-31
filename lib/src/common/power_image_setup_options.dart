@@ -2,7 +2,9 @@ import 'package:power_image/src/tools/power_image_monitor.dart';
 
 class PowerImageSetupOptions {
   PowerImageSetupOptions(this.globalRenderType,
-      {this.errorCallback, this.errorCallbackSamplingRate = 1.0});
+      {this.errorCallback,
+      this.errorCallbackSamplingRate = 1.0,
+      this.debugLogging = false});
 
   /// const String renderingTypeExternal = "external";
   /// const String renderingTypeTexture = "texture";
@@ -25,4 +27,8 @@ class PowerImageSetupOptions {
   /// and being hit means that all error callbacks for this device will be executed.
   /// Please do not mistakenly understand that 10% of the exceptions of a single device will execute the callback
   final double? errorCallbackSamplingRate;
+
+  /// Enables detailed Android request, surface and frame timing logs.
+  /// Disabled by default and ignored on iOS.
+  final bool debugLogging;
 }

@@ -4,6 +4,7 @@ import android.os.SystemClock
 import androidx.benchmark.macro.CompilationMode
 import androidx.benchmark.macro.ExperimentalMetricApi
 import androidx.benchmark.macro.FrameTimingMetric
+import androidx.benchmark.macro.MemoryUsageMetric
 import androidx.benchmark.macro.StartupMode
 import androidx.benchmark.macro.TraceSectionMetric
 import androidx.benchmark.macro.junit4.MacrobenchmarkRule
@@ -23,19 +24,52 @@ class AnimatedTextureBenchmark {
 
     @Test
     @OptIn(ExperimentalMetricApi::class)
-    fun animatedTextureScroll() = benchmarkRule.measureRepeated(
+    fun powerImageAnimatedScroll() = animatedScroll(
+        entryLabel = "benchmark_power_image",
+        pageLabel = "benchmark_power_image_page",
+        includePowerImageTrace = true,
+    )
+
+    @Test
+    fun cachedNetworkImageAnimatedScroll() = animatedScroll(
+        entryLabel = "benchmark_cached_network_image",
+        pageLabel = "benchmark_cached_network_image_page",
+        includePowerImageTrace = false,
+    )
+
+    @Test
+    fun extendedImageAnimatedScroll() = animatedScroll(
+        entryLabel = "benchmark_extended_image",
+        pageLabel = "benchmark_extended_image_page",
+        includePowerImageTrace = false,
+    )
+
+    @OptIn(ExperimentalMetricApi::class)
+    private fun animatedScroll(
+        entryLabel: String,
+        pageLabel: String,
+        includePowerImageTrace: Boolean,
+    ) = benchmarkRule.measureRepeated(
         packageName = TARGET_PACKAGE,
-        metrics = listOf(
-            FrameTimingMetric(),
-            TraceSectionMetric(
-                sectionName = "PowerImage#renderAnimatedFrames",
-                mode = TraceSectionMetric.Mode.Count,
-            ),
-            TraceSectionMetric(
-                sectionName = "PowerImage#renderAnimatedFrames",
-                mode = TraceSectionMetric.Mode.Average,
-            ),
-        ),
+        metrics = if (includePowerImageTrace) {
+            listOf(
+                FrameTimingMetric(),
+                MemoryUsageMetric(MemoryUsageMetric.Mode.Max),
+                TraceSectionMetric(
+                    sectionName = "PowerImage#renderAnimatedFrames",
+                    mode = TraceSectionMetric.Mode.Count,
+                ),
+                TraceSectionMetric(
+                    sectionName = "PowerImage#renderAnimatedFrames",
+                    mode = TraceSectionMetric.Mode.Average,
+                ),
+            )
+        } else {
+            listOf(
+                FrameTimingMetric(),
+                MemoryUsageMetric(MemoryUsageMetric.Mode.Max),
+            )
+        },
         compilationMode = CompilationMode.Full(),
         startupMode = StartupMode.WARM,
         iterations = 5,
@@ -46,18 +80,18 @@ class AnimatedTextureBenchmark {
         startActivityAndWait()
 
         val texturePage = device.wait(
-            Until.findObject(By.desc("animated_benchmark")),
+            Until.findObject(By.desc(entryLabel)),
             UI_TIMEOUT_MILLIS,
         )
-        requireNotNull(texturePage) { "animated_benchmark entry was not found" }
+        requireNotNull(texturePage) { "$entryLabel entry was not found" }
         texturePage.click()
         check(
             device.wait(
-                Until.hasObject(By.desc("animated benchmark")),
+                Until.hasObject(By.desc(pageLabel)),
                 UI_TIMEOUT_MILLIS,
             ),
         ) {
-            "animated benchmark page did not open"
+            "$pageLabel did not open"
         }
 
         // Allow the first visible animated WebP textures to start.

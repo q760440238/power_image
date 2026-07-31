@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -209,9 +210,8 @@ void main() {
       PowerImageProvider textureProvider1 =
           PowerImageProvider.options(textureOptions1);
 
-      final ImageStreamCompleter completer =
-          textureProvider1.loadImage(
-              textureProvider1, (_, {getTargetSize}) => throw UnimplementedError());
+      final ImageStreamCompleter completer = textureProvider1.loadImage(
+          textureProvider1, (_, {getTargetSize}) => throw UnimplementedError());
       expect(completer.runtimeType == OneFrameImageStreamCompleter, true);
 
       const int textureId = 233;
@@ -219,13 +219,13 @@ void main() {
       const int height = 2;
       completer.addListener(
           ImageStreamListener((ImageInfo image, bool synchronousCall) {
-            expect(image.runtimeType == PowerTextureImageInfo, true);
-            PowerTextureImageInfo textureImageInfo = image as PowerTextureImageInfo;
-            expect(textureImageInfo.image.width == 1, true);
-            expect(textureImageInfo.image.height == 1, true);
-            expect(textureImageInfo.textureId == textureId, true);
-            expect(textureImageInfo.width == width, true);
-            expect(textureImageInfo.height == height, true);
+        expect(image.runtimeType == PowerTextureImageInfo, true);
+        PowerTextureImageInfo textureImageInfo = image as PowerTextureImageInfo;
+        expect(textureImageInfo.image.width == 1, true);
+        expect(textureImageInfo.image.height == 1, true);
+        expect(textureImageInfo.textureId == textureId, true);
+        expect(textureImageInfo.width == width, true);
+        expect(textureImageInfo.height == height, true);
       }));
 
       Map mockCompleteMap = {
@@ -243,7 +243,7 @@ void main() {
             .encodeSuccessEnvelope(mockCompleteMap),
         (_) {},
       );
-      await Future.delayed(const Duration(milliseconds: 500), (){});
+      await Future.delayed(const Duration(milliseconds: 500), () {});
     });
 
     test('load_multiFrame_success', () async {
@@ -255,11 +255,12 @@ void main() {
           renderingType: renderingTypeTexture);
 
       PowerImageProvider textureProvider1 =
-      PowerImageProvider.options(textureOptions1);
+          PowerImageProvider.options(textureOptions1);
 
-      final ImageStreamCompleter? completer = imageCache!.putIfAbsent(textureProvider1, ()  {
-        return textureProvider1.loadImage(
-            textureProvider1, (_, {getTargetSize}) => throw UnimplementedError());
+      final ImageStreamCompleter? completer =
+          imageCache!.putIfAbsent(textureProvider1, () {
+        return textureProvider1.loadImage(textureProvider1,
+            (_, {getTargetSize}) => throw UnimplementedError());
       });
       // final ImageStreamCompleter completer =
       // textureProvider1.load(textureProvider1, null);
@@ -268,7 +269,8 @@ void main() {
       const int width = 1;
       const int height = 2;
 
-      ImageStreamListener listener = ImageStreamListener((ImageInfo image, bool synchronousCall) {
+      ImageStreamListener listener =
+          ImageStreamListener((ImageInfo image, bool synchronousCall) {
         expect(image.runtimeType == PowerTextureImageInfo, true);
         PowerTextureImageInfo textureImageInfo = image as PowerTextureImageInfo;
         expect(textureImageInfo.image.width == 1, true);
@@ -294,10 +296,10 @@ void main() {
         platformChannel!.eventChannel.name,
         platformChannel.eventChannel.codec
             .encodeSuccessEnvelope(mockCompleteMap),
-            (_) {},
+        (_) {},
       );
 
-      await Future.delayed(const Duration(milliseconds: 500), (){
+      await Future.delayed(const Duration(milliseconds: 500), () {
         completer?.removeListener(listener);
         expect(imageCache!.containsKey(textureProvider1) == true, true);
         Future.microtask(() {
@@ -321,9 +323,8 @@ void main() {
       PowerImageProvider textureProvider1 =
           PowerImageProvider.options(textureOptions1);
 
-      final ImageStreamCompleter completer =
-          textureProvider1.loadImage(
-              textureProvider1, (_, {getTargetSize}) => throw UnimplementedError());
+      final ImageStreamCompleter completer = textureProvider1.loadImage(
+          textureProvider1, (_, {getTargetSize}) => throw UnimplementedError());
       expect(completer.runtimeType == OneFrameImageStreamCompleter, true);
 
       final Map mockCompleteMap = {
@@ -378,5 +379,66 @@ void main() {
         isMethodCall('releaseImageRequests', arguments: [request.encode()])
       ],
     );
+  });
+
+  test('PowerTextureImageProvider creates Flutter codec metadata', () async {
+    PowerTextureImageProvider provider =
+        PowerTextureImageProvider(testRequestOptions());
+    Uint8List encodedData = Uint8List.fromList(<int>[1, 2, 3, 4]);
+
+    ImageInfo imageInfo = await Future<ImageInfo>.value(
+        provider.createImageInfo(<String, dynamic>{
+      'renderingBackend': 'flutterCodec',
+      'encodedData': encodedData,
+      'width': 512,
+      'height': 512,
+      'targetWidth': 420,
+      'targetHeight': 420,
+    }));
+
+    expect(imageInfo, isA<PowerFlutterCodecImageInfo>());
+    PowerFlutterCodecImageInfo codecInfo =
+        imageInfo as PowerFlutterCodecImageInfo;
+    expect(codecInfo.encodedData, same(encodedData));
+    expect(codecInfo.width, 512);
+    expect(codecInfo.height, 512);
+    expect(codecInfo.targetWidth, 420);
+    expect(codecInfo.targetHeight, 420);
+    expect(codecInfo.sizeBytes, encodedData.lengthInBytes);
+
+    PowerFlutterCodecImageInfo clone =
+        codecInfo.clone() as PowerFlutterCodecImageInfo;
+    expect(clone.encodedData, same(encodedData));
+    expect(clone.targetWidth, 420);
+    expect(clone.targetHeight, 420);
+    clone.dispose();
+    codecInfo.dispose();
+  });
+
+  test('PowerTextureImageProvider creates file codec metadata', () async {
+    PowerTextureImageProvider provider =
+        PowerTextureImageProvider(testRequestOptions());
+
+    ImageInfo imageInfo = await Future<ImageInfo>.value(
+        provider.createImageInfo(<String, dynamic>{
+      'renderingBackend': 'flutterCodec',
+      'encodedFilePath': '/cache/animated.webp',
+      'width': 512,
+      'height': 512,
+      'targetWidth': 420,
+      'targetHeight': 420,
+    }));
+
+    PowerFlutterCodecImageInfo codecInfo =
+        imageInfo as PowerFlutterCodecImageInfo;
+    expect(codecInfo.encodedData, isNull);
+    expect(codecInfo.encodedFilePath, '/cache/animated.webp');
+    expect(codecInfo.sizeBytes, 0);
+
+    PowerFlutterCodecImageInfo clone =
+        codecInfo.clone() as PowerFlutterCodecImageInfo;
+    expect(clone.encodedFilePath, codecInfo.encodedFilePath);
+    clone.dispose();
+    codecInfo.dispose();
   });
 }

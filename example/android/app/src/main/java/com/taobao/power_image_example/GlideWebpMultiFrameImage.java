@@ -40,4 +40,10 @@ public class GlideWebpMultiFrameImage extends FlutterMultiFrameImage {
     public int getFrameCount() {
         return ((WebpDrawable) drawable).getFrameCount();
     }
+
+    @Override
+    public byte[] getEncodedData() {
+        return copyEncodedBuffer(((WebpDrawable) drawable).getBuffer());
+    }
+
 }

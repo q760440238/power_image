@@ -4,7 +4,10 @@ import android.graphics.Rect;
 import android.view.Surface;
 
 import com.taobao.power_image.PowerImageEngineContext;
+import com.taobao.power_image.PowerImageDiagnostics;
+import com.taobao.power_image.PowerImageRuntime;
 import com.taobao.power_image.dispatcher.PowerImageDispatcher;
+import com.taobao.power_image.loader.FlutterEncodedImage;
 import com.taobao.power_image.loader.FlutterImage;
 import com.taobao.power_image.loader.PowerImageResult;
 
@@ -27,10 +30,15 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
 
     private final WeakReference<TextureRegistry> textureRegistryWrf;
     private final AtomicBoolean loadSuccessSent = new AtomicBoolean(false);
+    private final int requestedWidth;
+    private final int requestedHeight;
     private volatile boolean stopped;
     private volatile boolean surfaceAvailable;
     private volatile boolean animationActive = true;
     private volatile TextureRegistry.SurfaceProducer textureEntry;
+    private volatile byte[] flutterCodecData;
+    private volatile String flutterCodecFilePath;
+    private volatile boolean flutterCodecFallback;
     private volatile int imageTextureWidth;
     private volatile int imageTextureHeight;
     private int bitmapWidth;
@@ -39,11 +47,20 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
     public PowerImageTextureRequest(PowerImageEngineContext context, Map<String, Object> arguments, TextureRegistry textureRegistry) {
         super(context, arguments);
         textureRegistryWrf = new WeakReference<>(textureRegistry);
+        PowerImageRequestConfig config = getImageRequestConfig();
+        requestedWidth = config != null ? config.width : 0;
+        requestedHeight = config != null ? config.height : 0;
         stopped = false;
     }
 
     @Override
     void onLoadResult(final PowerImageResult result) {
+        if (stopped || isRequestReleased()) {
+            if (result != null && result.image != null) {
+                result.image.release();
+            }
+            return;
+        }
         super.onLoadResult(result);
         if (result == null) {
             onLoadFailed(TAG + ":onLoadResult(PowerImageResult result) result is null");
@@ -54,16 +71,24 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
             return;
         }
         if (stopped) {
-            onLoadFailed(TAG + ":onLoadResult isStopped");
+            if (result.image != null) {
+                result.image.release();
+            }
             return;
         }
         if (result.image == null || !result.image.isValid()) {
             onLoadFailed(TAG + ":onLoadResult FlutterImage/bitmap is null or bitmap has recycled");
             return;
         }
+        result.image.setDiagnosticRequestId(requestId);
         realResult = result;
         bitmapWidth = result.image.getWidth();
         bitmapHeight = result.image.getHeight();
+        checkImageTextureSize(result.image);
+
+        if (tryFlutterCodecFallback(result.image)) {
+            return;
+        }
 
         PowerImageDispatcher.getInstance().runOnMainThread(new Runnable() {
             @Override
@@ -74,13 +99,21 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
                     textureEntry = createSurfaceProducer(textureRegistry);
                     surfaceAvailable = true;
                     textureEntry.setCallback(PowerImageTextureRequest.this);
+                    PowerImageDiagnostics.debug(
+                            "surface_producer_created",
+                            requestId,
+                            "source=" + bitmapWidth + "x" + bitmapHeight
+                                    + " target=" + imageTextureWidth + "x" + imageTextureHeight
+                                    + " frames=" + result.image.getFrameCount()
+                                    + " estimatedBuffersBytes="
+                                    + estimateSurfaceBufferBytes(
+                                            imageTextureWidth, imageTextureHeight));
                 }
                 if (textureEntry == null) {
                     onLoadFailed(TAG + ":onLoadResult SurfaceTextureEntry create failed");
                     return;
                 }
                 if (stopped) {
-                    onLoadFailed(TAG + ":onLoadResult isStopped 2");
                     return;
                 }
                 // 切到子线程进行图片加载和纹理绘制
@@ -94,29 +127,68 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
     public boolean stopTask() {
         stopped = true;
         surfaceAvailable = false;
+        flutterCodecData = null;
+        flutterCodecFilePath = null;
+        if (!markRequestReleased()) {
+            return true;
+        }
         imageTaskState = REQUEST_STATE_RELEASE_SUCCEED;
         textureRegistryWrf.clear();
 
         Runnable runnable = new Runnable() {
             @Override
             public void run() {
-                TextureRegistry.SurfaceProducer entry = textureEntry;
+                final TextureRegistry.SurfaceProducer entry = textureEntry;
                 if (entry != null) {
                     synchronized (entry) {
                         try {
                             if (textureEntry == entry) {
                                 textureEntry = null;
                                 entry.setCallback(null);
-                                entry.release();
                             }
-                        } catch (Exception e) {
+                        } catch (Exception error) {
+                            PowerImageDiagnostics.error(
+                                    "surface_callback_clear_failed",
+                                    requestId,
+                                    null,
+                                    error);
                         }
                     }
                 }
+                final Runnable finishRelease = new Runnable() {
+                    @Override
+                    public void run() {
+                        PowerImageDispatcher.getInstance().runOnMainThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (entry != null && isEngineAttached()) {
+                                    try {
+                                        entry.release();
+                                    } catch (Exception error) {
+                                        PowerImageDiagnostics.error(
+                                                "surface_producer_release_failed",
+                                                requestId,
+                                                null,
+                                                error);
+                                    }
+                                } else if (entry != null) {
+                                    PowerImageDiagnostics.debug(
+                                            "surface_producer_release_skipped",
+                                            requestId,
+                                            "reason=engine_detached");
+                                }
+                                releaseLoadHandle();
+                                PowerImageDiagnostics.debug(
+                                        "texture_request_released", requestId, null);
+                            }
+                        });
+                    }
+                };
                 if (realResult != null && realResult.image != null) {
-                    realResult.image.release();
+                    realResult.image.release(finishRelease);
+                } else {
+                    finishRelease.run();
                 }
-                releaseLoadHandle();
             }
         };
 
@@ -133,7 +205,83 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
         if (entry != null) {
             encodedRequest.put("textureId", entry.id());
         }
+        byte[] encodedData = flutterCodecData;
+        String encodedFilePath = flutterCodecFilePath;
+        if (flutterCodecFallback
+                && (encodedData != null || encodedFilePath != null)) {
+            encodedRequest.put("renderingBackend", "flutterCodec");
+            if (encodedData != null) {
+                encodedRequest.put("encodedData", encodedData);
+            }
+            if (encodedFilePath != null) {
+                encodedRequest.put("encodedFilePath", encodedFilePath);
+            }
+            encodedRequest.put("targetWidth", imageTextureWidth);
+            encodedRequest.put("targetHeight", imageTextureHeight);
+        }
         return encodedRequest;
+    }
+
+    private boolean tryFlutterCodecFallback(final FlutterImage image) {
+        boolean encodedOnly = image instanceof FlutterEncodedImage;
+        if ((!PowerImageRuntime.isEmulator() && !encodedOnly)
+                || image.getFrameCount() <= 1) {
+            return false;
+        }
+
+        final byte[] encodedData;
+        final String encodedFilePath;
+        try {
+            encodedData = image.getEncodedData();
+            encodedFilePath = image.getEncodedFilePath();
+        } catch (RuntimeException error) {
+            PowerImageDiagnostics.error(
+                    "flutter_codec_data_failed", requestId, null, error);
+            return false;
+        }
+        boolean hasData = encodedData != null && encodedData.length > 0;
+        boolean hasFile = encodedFilePath != null && !encodedFilePath.isEmpty();
+        if (!hasData && !hasFile) {
+            PowerImageDiagnostics.debug(
+                    "flutter_codec_unavailable",
+                    requestId,
+                    "frames=" + image.getFrameCount());
+            return false;
+        }
+
+        flutterCodecData = hasData ? encodedData : null;
+        flutterCodecFilePath = hasFile ? encodedFilePath : null;
+        flutterCodecFallback = true;
+        loadSuccessSent.set(true);
+        PowerImageDiagnostics.debug(
+                "flutter_codec_fallback",
+                requestId,
+                "bytes=" + (hasData ? encodedData.length : 0)
+                        + " file=" + hasFile
+                        + " frames=" + image.getFrameCount()
+                        + " source=" + bitmapWidth + "x" + bitmapHeight
+                        + " target=" + imageTextureWidth + "x" + imageTextureHeight);
+        image.release(new Runnable() {
+            @Override
+            public void run() {
+                PowerImageDispatcher.getInstance().runOnMainThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            releaseLoadHandle();
+                            if (!stopped && !isRequestReleased()) {
+                                onLoadSuccess();
+                            }
+                        } finally {
+                            flutterCodecData = null;
+                            flutterCodecFilePath = null;
+                            realResult = null;
+                        }
+                    }
+                });
+            }
+        });
+        return true;
     }
 
     @Override
@@ -143,7 +291,11 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
 
     // No @Override: this callback was added after Flutter 3.24.
     public void onSurfaceAvailable() {
+        if (stopped) {
+            return;
+        }
         surfaceAvailable = true;
+        PowerImageDiagnostics.debug("surface_available", requestId, null);
         PowerImageResult result = realResult;
         if (!stopped && result != null && result.image != null && result.image.isValid()) {
             result.image.setAnimationActive(animationActive);
@@ -159,6 +311,7 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
     // No @Override: this callback was added after Flutter 3.24.
     public void onSurfaceCleanup() {
         surfaceAvailable = false;
+        PowerImageDiagnostics.debug("surface_cleanup", requestId, null);
         PowerImageResult result = realResult;
         if (result != null && result.image != null) {
             result.image.onSurfaceCleanup();
@@ -168,6 +321,8 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
     @Override
     public void setAnimationActive(boolean active) {
         animationActive = active;
+        PowerImageDiagnostics.verbose(
+                "animation_visibility", requestId, "active=" + active);
         PowerImageResult result = realResult;
         if (result != null && result.image != null) {
             result.image.setAnimationActive(active && surfaceAvailable);
@@ -188,13 +343,17 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
                         return;
                     }
 
-                    // 显示纹理
-                    checkImageTextureSize(image);
-                    entry.setSize(imageTextureWidth, imageTextureHeight);
-                    image.setAnimationActive(animationActive);
-                    Surface surface = entry.getSurface();
-                    if (surface != null && surface.isValid()) {
-                        try {
+                    try {
+                        // 显示纹理
+                        checkImageTextureSize(image);
+                        if (imageTextureWidth <= 0 || imageTextureHeight <= 0) {
+                            throw new IllegalArgumentException(
+                                    "Drawable has invalid intrinsic dimensions");
+                        }
+                        entry.setSize(imageTextureWidth, imageTextureHeight);
+                        image.setAnimationActive(animationActive);
+                        Surface surface = entry.getSurface();
+                        if (surface != null && surface.isValid()) {
                             Rect destRect = new Rect(0, 0, imageTextureWidth, imageTextureHeight);
                             image.draw(new FlutterImage.SurfaceProvider() {
                                 @Override
@@ -208,8 +367,11 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
                             if (loadSuccessSent.compareAndSet(false, true)) {
                                 onLoadSuccess();
                             }
-                        } catch (Exception e) {
-                            e.printStackTrace();
+                        }
+                    } catch (Exception e) {
+                        PowerImageDiagnostics.error(
+                                "texture_draw_failed", requestId, null, e);
+                        if (!loadSuccessSent.get()) {
                             onLoadFailed(TAG + ":performDraw drawBitmap " + e.getMessage());
                         }
                     }
@@ -242,17 +404,45 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
         int originHeight = imageBitmap.getHeight();
 
 
-        double widthRatio = originWidth / (double) MAX_RESIZE_WIDTH;
-        double heightRatio = originHeight / (double) MAX_RESIZE_HEIGHT;
+        int[] size = fitTextureSize(
+                originWidth,
+                originHeight,
+                requestedWidth,
+                requestedHeight);
+        imageTextureWidth = size[0];
+        imageTextureHeight = size[1];
+    }
 
-        if (widthRatio <= 1 && heightRatio <= 1) {
-            imageTextureWidth = originWidth;
-            imageTextureHeight = originHeight;
-            return;
+    static int[] fitTextureSize(
+            int originWidth,
+            int originHeight,
+            int requestedWidth,
+            int requestedHeight) {
+        if (originWidth <= 0 || originHeight <= 0) {
+            return new int[]{0, 0};
         }
 
-        double ratio = Math.max(widthRatio, heightRatio);
-        imageTextureWidth = (int) (originWidth / ratio);
-        imageTextureHeight = (int) (originHeight / ratio);
+        double scale = Math.min(
+                1d,
+                Math.min(
+                        MAX_RESIZE_WIDTH / (double) originWidth,
+                        MAX_RESIZE_HEIGHT / (double) originHeight));
+        if (requestedWidth > 0) {
+            scale = Math.min(scale, requestedWidth / (double) originWidth);
+        }
+        if (requestedHeight > 0) {
+            scale = Math.min(scale, requestedHeight / (double) originHeight);
+        }
+
+        return new int[]{
+                Math.max(1, (int) Math.round(originWidth * scale)),
+                Math.max(1, (int) Math.round(originHeight * scale))};
+    }
+
+    static long estimateSurfaceBufferBytes(int width, int height) {
+        if (width <= 0 || height <= 0) {
+            return 0L;
+        }
+        return (long) width * (long) height * 4L * 3L;
     }
 }

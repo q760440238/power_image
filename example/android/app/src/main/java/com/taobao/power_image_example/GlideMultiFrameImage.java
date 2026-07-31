@@ -32,4 +32,10 @@ public class GlideMultiFrameImage extends FlutterMultiFrameImage {
     public int getFrameCount() {
         return ((GifDrawable)drawable).getFrameCount();
     }
+
+    @Override
+    public byte[] getEncodedData() {
+        return copyEncodedBuffer(((GifDrawable) drawable).getBuffer());
+    }
+
 }

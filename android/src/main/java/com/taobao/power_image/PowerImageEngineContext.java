@@ -20,6 +20,7 @@ public class PowerImageEngineContext implements MethodChannel.MethodCallHandler 
 
     private final PowerImageRequestManager powerImageRequestManager;
     private final PowerImageEventSink powerImageEventSink;
+    private volatile boolean attached;
 
     /// The MethodChannel that will the communication between Flutter and native Android
     ///
@@ -34,6 +35,7 @@ public class PowerImageEngineContext implements MethodChannel.MethodCallHandler 
     }
 
     public void onAttachedToEngine(@NonNull FlutterPlugin.FlutterPluginBinding flutterPluginBinding) {
+        attached = true;
         methodChannel = new MethodChannel(
                 flutterPluginBinding.getBinaryMessenger(), "power_image/method");
         methodChannel.setMethodCallHandler(this);
@@ -88,7 +90,9 @@ public class PowerImageEngineContext implements MethodChannel.MethodCallHandler 
         } else if ("setImageAnimationActive".equals(call.method)) {
             if (call.arguments instanceof Map) {
                 Map arguments = (Map) call.arguments;
-                String uniqueKey = (String) arguments.get("uniqueKey");
+                Object uniqueKeyValue = arguments.get("uniqueKey");
+                String uniqueKey = uniqueKeyValue instanceof String
+                        ? (String) uniqueKeyValue : null;
                 Object activeValue = arguments.get("active");
                 if (uniqueKey != null && activeValue instanceof Boolean) {
                     powerImageRequestManager.setAnimationActive(
@@ -102,12 +106,21 @@ public class PowerImageEngineContext implements MethodChannel.MethodCallHandler 
                 result.error("invalid_arguments",
                         "setImageAnimationActive requires Map arguments", null);
             }
+        } else if ("setPowerImageDebugLogging".equals(call.method)) {
+            if (call.arguments instanceof Boolean) {
+                PowerImageDiagnostics.setEnabled((Boolean) call.arguments);
+                result.success(true);
+            } else {
+                result.error("invalid_arguments",
+                        "setPowerImageDebugLogging requires a boolean", null);
+            }
         } else {
             result.notImplemented();
         }
     }
 
     public void onDetached() {
+        attached = false;
         powerImageRequestManager.releaseAllRequests();
         if (methodChannel != null) {
             methodChannel.setMethodCallHandler(null);
@@ -115,6 +128,10 @@ public class PowerImageEngineContext implements MethodChannel.MethodCallHandler 
         if (eventChannel != null) {
             eventChannel.setStreamHandler(null);
         }
+    }
+
+    public boolean isAttached() {
+        return attached;
     }
 
     public static class PowerImageEventSink implements EventChannel.StreamHandler {

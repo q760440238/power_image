@@ -1,7 +1,10 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:power_image_example/animated_webp_fixture.dart';
 import 'package:power_image_example/examples/example_gallery_preview.dart';
 import 'examples/drag_overlay.dart';
 import 'examples/example_decoration_image_page.dart';
@@ -12,18 +15,25 @@ import 'examples/image_cache_status.dart';
 
 void main() {
   runZonedGuarded(() async {
-    FlutterError.onError = (FlutterErrorDetails details) {};
-
     PowerImageBinding();
     PowerImageLoader.instance.setup(PowerImageSetupOptions(renderingTypeTexture,
         errorCallbackSamplingRate: null,
         errorCallback: (PowerImageLoadException exception) {}));
-    runApp(const MyApp());
-  }, (error, stackTrace) async {});
+    final AnimatedWebpFixture fixture = await AnimatedWebpFixture.start();
+    runApp(MyApp(animatedWebpUrl: fixture.url));
+  }, (Object error, StackTrace stackTrace) {
+    FlutterError.reportError(FlutterErrorDetails(
+      exception: error,
+      stack: stackTrace,
+      context: ErrorDescription('starting the power_image example'),
+    ));
+  });
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({Key? key, required this.animatedWebpUrl}) : super(key: key);
+
+  final String animatedWebpUrl;
 
   // This widget is the root of your application.
   @override
@@ -42,13 +52,15 @@ class MyApp extends StatelessWidget {
         // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(),
+      home: MyHomePage(animatedWebpUrl: animatedWebpUrl),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({Key? key}) : super(key: key);
+  const MyHomePage({Key? key, required this.animatedWebpUrl}) : super(key: key);
+
+  final String animatedWebpUrl;
 
   @override
   _MyHomePageState createState() => _MyHomePageState();
@@ -57,7 +69,7 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
-    WidgetsBinding.instance!.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       DragOverlay.show(context: context, view: const ImageCacheStatusWidget());
     });
     super.initState();
@@ -95,10 +107,38 @@ class _MyHomePageState extends State<MyHomePage> {
           },
         ),
         ListTile(
-          title: const Text('animated_benchmark'),
+          title: const Text('benchmark_power_image'),
           onTap: () {
+            DragOverlay.remove();
             Navigator.push(context, MaterialPageRoute(builder: (context) {
-              return const AnimatedBenchmarkPage();
+              return AnimatedBenchmarkPage(
+                library: BenchmarkLibrary.powerImage,
+                animatedWebpUrl: widget.animatedWebpUrl,
+              );
+            }));
+          },
+        ),
+        ListTile(
+          title: const Text('benchmark_cached_network_image'),
+          onTap: () {
+            DragOverlay.remove();
+            Navigator.push(context, MaterialPageRoute(builder: (context) {
+              return AnimatedBenchmarkPage(
+                library: BenchmarkLibrary.cachedNetworkImage,
+                animatedWebpUrl: widget.animatedWebpUrl,
+              );
+            }));
+          },
+        ),
+        ListTile(
+          title: const Text('benchmark_extended_image'),
+          onTap: () {
+            DragOverlay.remove();
+            Navigator.push(context, MaterialPageRoute(builder: (context) {
+              return AnimatedBenchmarkPage(
+                library: BenchmarkLibrary.extendedImage,
+                animatedWebpUrl: widget.animatedWebpUrl,
+              );
             }));
           },
         ),
@@ -128,32 +168,92 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 
+enum BenchmarkLibrary {
+  powerImage,
+  cachedNetworkImage,
+  extendedImage,
+}
+
+String benchmarkName(BenchmarkLibrary library) {
+  switch (library) {
+    case BenchmarkLibrary.powerImage:
+      return 'power_image';
+    case BenchmarkLibrary.cachedNetworkImage:
+      return 'cached_network_image';
+    case BenchmarkLibrary.extendedImage:
+      return 'extended_image';
+  }
+}
+
 class AnimatedBenchmarkPage extends StatelessWidget {
-  const AnimatedBenchmarkPage({Key? key}) : super(key: key);
+  const AnimatedBenchmarkPage({
+    Key? key,
+    required this.library,
+    required this.animatedWebpUrl,
+  }) : super(key: key);
+
+  final BenchmarkLibrary library;
+  final String animatedWebpUrl;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('animated benchmark')),
-      body: GridView.builder(
-        cacheExtent: 0,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
+      appBar: AppBar(title: Text('benchmark_${benchmarkName(library)}_page')),
+      body: Semantics(
+        label: 'benchmark_${benchmarkName(library)}_grid',
+        child: GridView.builder(
+          cacheExtent: 0,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+          ),
+          itemCount: benchmarkAnimatedWebpCount,
+          itemBuilder: (BuildContext context, int index) {
+            final String url = '$animatedWebpUrl?library='
+                '${benchmarkName(library)}&item=$index';
+            return Semantics(
+              label: 'benchmark_${benchmarkName(library)}_item_$index',
+              image: true,
+              child: _benchmarkImage(context, url),
+            );
+          },
         ),
-        itemCount: 60,
-        itemBuilder: (BuildContext context, int index) {
-          return PowerImage.type(
-            'benchmarkAnimatedWebp',
-            src: PowerImageRequestOptionsSrcNormal(src: 'benchmark-$index'),
-            renderingType: renderingTypeTexture,
-            width: 160,
-            height: 160,
-            imageWidth: 160,
-            imageHeight: 160,
-            fit: BoxFit.cover,
-          );
-        },
       ),
     );
+  }
+
+  Widget _benchmarkImage(BuildContext context, String url) {
+    final int decodePixels =
+        (160 * MediaQuery.of(context).devicePixelRatio).round();
+    switch (library) {
+      case BenchmarkLibrary.powerImage:
+        return PowerImage.network(
+          url,
+          renderingType: renderingTypeTexture,
+          width: 160,
+          height: 160,
+          imageWidth: 160,
+          imageHeight: 160,
+          fit: BoxFit.cover,
+        );
+      case BenchmarkLibrary.cachedNetworkImage:
+        return CachedNetworkImage(
+          imageUrl: url,
+          width: 160,
+          height: 160,
+          memCacheWidth: decodePixels,
+          memCacheHeight: decodePixels,
+          fit: BoxFit.cover,
+        );
+      case BenchmarkLibrary.extendedImage:
+        return ExtendedImage.network(
+          url,
+          width: 160,
+          height: 160,
+          cacheWidth: decodePixels,
+          cacheHeight: decodePixels,
+          fit: BoxFit.cover,
+          cache: true,
+        );
+    }
   }
 }

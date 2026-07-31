@@ -74,4 +74,9 @@ class PowerImagePlatformChannel extends PowerImageChannelImpl {
     await methodChannel.invokeMethod('setImageAnimationActive',
         <String, dynamic>{'uniqueKey': uniqueKey, 'active': active});
   }
+
+  @override
+  void setDebugLogging(bool enabled) async {
+    await methodChannel.invokeMethod('setPowerImageDebugLogging', enabled);
+  }
 }
