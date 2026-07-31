@@ -20,9 +20,10 @@ public class PowerImageNetworkLoader implements PowerImageLoaderProtocol {
     @Override
     public void handleRequest(PowerImageRequestConfig request, PowerImageResponse response) {
         RequestManager requestManager = Glide.with(context);
+        String source = request.srcString();
         PowerImageGlideResult.submit(
                 requestManager,
-                requestManager.asDrawable().load(request.srcString()),
+                requestManager.asDrawable().load(source),
                 request,
                 response);
     }

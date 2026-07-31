@@ -1,6 +1,9 @@
 package com.taobao.power_image.request;
 
+import android.os.SystemClock;
+
 import com.taobao.power_image.PowerImageEngineContext;
+import com.taobao.power_image.PowerImageDiagnostics;
 import com.taobao.power_image.dispatcher.PowerImageDispatcher;
 import com.taobao.power_image.loader.FlutterMultiFrameImage;
 import com.taobao.power_image.loader.PowerImageLoader;
@@ -26,23 +29,36 @@ public abstract class PowerImageBaseRequest {
 
     private final PowerImageEngineContext engineContext;
     private final Object loadHandleLock = new Object();
+    private final long createdAtNanos = SystemClock.elapsedRealtimeNanos();
     private PowerImageRequestConfig imageRequestConfig;
     private PowerImageLoaderProtocol.PowerImageRequestHandle loadHandle;
     private boolean loadHandleReleased;
+    private volatile boolean requestReleased;
     String requestId;
     protected String imageTaskState;
     protected PowerImageResult realResult;
 
     public PowerImageBaseRequest(PowerImageEngineContext context, Map<String, Object> arguments) {
         engineContext = context;
-        requestId = (String) arguments.get("uniqueKey");
+        Object requestIdValue = arguments.get("uniqueKey");
+        requestId = requestIdValue instanceof String
+                ? (String) requestIdValue : null;
         imageRequestConfig = PowerImageRequestConfig.requestConfigWithArguments(arguments);
+        PowerImageDiagnostics.debug(
+                "request_created",
+                requestId,
+                "type=" + imageRequestConfig.imageType
+                        + " render=" + imageRequestConfig.renderingType
+                        + " target=" + imageRequestConfig.width + "x"
+                        + imageRequestConfig.height);
     }
 
     public boolean configTask() {
         boolean inited = imageRequestConfig != null;
         imageTaskState = inited ? REQUEST_STATE_INITIALIZE_SUCCEED
                 : REQUEST_STATE_INITIALIZE_FAILED;
+        PowerImageDiagnostics.debug(
+                "request_configured", requestId, "success=" + inited);
         return inited;
     }
 
@@ -55,26 +71,33 @@ public abstract class PowerImageBaseRequest {
         if (imageRequestConfig == null) {
             return false;
         }
+        PowerImageDiagnostics.debug("load_started", requestId, null);
         performLoadImage();
         return true;
     }
 
     private void performLoadImage() {
-        PowerImageLoader.getInstance().handleRequest(
-                imageRequestConfig,
-                new PowerImageLoaderProtocol.PowerImageResponse() {
-                    @Override
-                    public void onResult(PowerImageResult result) {
-                        PowerImageBaseRequest.this.onLoadResult(result);
-                    }
+        try {
+            PowerImageLoader.getInstance().handleRequest(
+                    imageRequestConfig,
+                    new PowerImageLoaderProtocol.PowerImageResponse() {
+                        @Override
+                        public void onResult(PowerImageResult result) {
+                            PowerImageBaseRequest.this.onLoadResult(result);
+                        }
 
-                    @Override
-                    public void onRequestHandle(
-                            PowerImageLoaderProtocol.PowerImageRequestHandle handle) {
-                        PowerImageBaseRequest.this.setLoadHandle(handle);
+                        @Override
+                        public void onRequestHandle(
+                                PowerImageLoaderProtocol.PowerImageRequestHandle handle) {
+                            PowerImageBaseRequest.this.setLoadHandle(handle);
+                        }
                     }
-                }
-        );
+            );
+        } catch (RuntimeException error) {
+            PowerImageDiagnostics.error(
+                    "load_dispatch_failed", requestId, null, error);
+            onLoadFailed(error.getMessage());
+        }
     }
 
     private void setLoadHandle(PowerImageLoaderProtocol.PowerImageRequestHandle handle) {
@@ -88,6 +111,10 @@ public abstract class PowerImageBaseRequest {
         if (cancelImmediately && handle != null) {
             handle.cancel();
         }
+        PowerImageDiagnostics.verbose(
+                "load_handle",
+                requestId,
+                "cancelImmediately=" + cancelImmediately + " present=" + (handle != null));
     }
 
     protected final void releaseLoadHandle() {
@@ -100,6 +127,7 @@ public abstract class PowerImageBaseRequest {
         if (handle != null) {
             handle.cancel();
         }
+        PowerImageDiagnostics.debug("load_handle_released", requestId, null);
     }
 
     void onLoadResult(PowerImageResult result) {
@@ -110,7 +138,14 @@ public abstract class PowerImageBaseRequest {
         PowerImageDispatcher.getInstance().runOnMainThread(new Runnable() {
             @Override
             public void run() {
+                if (requestReleased) {
+                    return;
+                }
                 PowerImageBaseRequest.this.imageTaskState = REQUEST_STATE_LOAD_SUCCEED;
+                PowerImageDiagnostics.debug(
+                        "load_succeeded",
+                        requestId,
+                        "elapsedMs=" + PowerImageDiagnostics.elapsedMillis(createdAtNanos));
                 engineContext.sendImageStateEvent(PowerImageBaseRequest.this.encode(), true);
             }
         });
@@ -120,9 +155,21 @@ public abstract class PowerImageBaseRequest {
         PowerImageDispatcher.getInstance().runOnMainThread(new Runnable() {
             @Override
             public void run() {
+                if (requestReleased) {
+                    return;
+                }
                 PowerImageBaseRequest.this.imageTaskState = REQUEST_STATE_LOAD_FAILED;
                 Map<String, Object> event = PowerImageBaseRequest.this.encode();
                 event.put("errMsg", errMsg != null ? errMsg : "failed!");
+                PowerImageDiagnostics.error(
+                        "load_failed",
+                        requestId,
+                        "elapsedMs=" + PowerImageDiagnostics.elapsedMillis(createdAtNanos)
+                                + " reasonToken="
+                                + PowerImageDiagnostics.valueToken(errMsg)
+                                + " reasonLength="
+                                + (errMsg != null ? errMsg.length() : 0),
+                        null);
                 engineContext.sendImageStateEvent(event, false);
             }
         });
@@ -132,6 +179,34 @@ public abstract class PowerImageBaseRequest {
         return false;
     }
 
+    /**
+     * Releases resources while the Flutter engine is still attached.
+     * Texture requests override this to unregister textures synchronously.
+     */
+    public boolean stopTaskForEngineDetach() {
+        return stopTask();
+    }
+
+    protected final synchronized boolean markRequestReleased() {
+        if (requestReleased) {
+            return false;
+        }
+        requestReleased = true;
+        PowerImageDiagnostics.debug(
+                "request_releasing",
+                requestId,
+                "elapsedMs=" + PowerImageDiagnostics.elapsedMillis(createdAtNanos));
+        return true;
+    }
+
+    protected final boolean isRequestReleased() {
+        return requestReleased;
+    }
+
+    protected final PowerImageRequestConfig getImageRequestConfig() {
+        return imageRequestConfig;
+    }
+
     public void setAnimationActive(boolean active) {
     }
 
@@ -139,7 +214,9 @@ public abstract class PowerImageBaseRequest {
         Map<String, Object> encodedTask = new HashMap<>();
         encodedTask.put("uniqueKey", requestId);
         encodedTask.put("state", imageTaskState);
-        if (realResult != null && realResult.success && realResult.image instanceof FlutterMultiFrameImage) {
+        if (realResult != null
+                && realResult.success
+                && realResult.image instanceof FlutterMultiFrameImage) {
             encodedTask.put("_multiFrame", true);
         }
         return encodedTask;

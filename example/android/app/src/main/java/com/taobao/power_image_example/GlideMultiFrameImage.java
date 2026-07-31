@@ -32,4 +32,5 @@ public class GlideMultiFrameImage extends FlutterMultiFrameImage {
     public int getFrameCount() {
         return ((GifDrawable)drawable).getFrameCount();
     }
+
 }

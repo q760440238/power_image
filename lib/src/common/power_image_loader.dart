@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:power_image/src/common/power_image_provider.dart';
@@ -39,6 +40,9 @@ class PowerImageLoader {
     PowerImageMonitor.instance().errorCallback = options?.errorCallback;
     PowerImageMonitor.instance().errorCallbackSamplingRate =
         options?.errorCallbackSamplingRate;
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      channel.setDebugLogging(options?.debugLogging ?? false);
+    }
     channel.setup();
   }
 

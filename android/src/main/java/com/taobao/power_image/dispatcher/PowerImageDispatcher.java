@@ -1,6 +1,7 @@
 package com.taobao.power_image.dispatcher;
 
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Looper;
 
 /**
@@ -14,7 +15,7 @@ public class PowerImageDispatcher {
 
     private static volatile PowerImageDispatcher sInstance;
 
-    private boolean isPrepared = false;
+    private volatile boolean isPrepared = false;
     private Handler workHandler;
     private Handler mainHandler;
     private Looper workLooper;
@@ -30,23 +31,17 @@ public class PowerImageDispatcher {
         return sInstance;
     }
 
-    public void prepare() {
+    public synchronized void prepare() {
         if (isPrepared) {
             return;
         }
-        isPrepared = true;
         mainHandler = new Handler(Looper.getMainLooper());
-        Thread workThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                Looper.prepare();
-                workLooper = Looper.myLooper();
-                workHandler = new Handler();
-                Looper.loop();
-            }
-        });
-        workThread.setName("com.taobao.power_image.work");
+        HandlerThread workThread =
+                new HandlerThread("com.taobao.power_image.work");
         workThread.start();
+        workLooper = workThread.getLooper();
+        workHandler = new Handler(workLooper);
+        isPrepared = true;
     }
 
     public void runOnWorkThread(Runnable runnable) {

@@ -82,7 +82,9 @@ class PowerTextureState extends State<PowerTextureImage>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final bool applicationActive = state == AppLifecycleState.resumed;
     if (_applicationActive != applicationActive) {
-      _applicationActive = applicationActive;
+      setState(() {
+        _applicationActive = applicationActive;
+      });
       _updateAnimationState();
     }
   }

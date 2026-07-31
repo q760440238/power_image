@@ -35,6 +35,12 @@ public class PowerImageExternalRequest extends PowerImageBaseRequest {
 
     @Override
     void onLoadResult(PowerImageResult result) {
+        if (stoped || isRequestReleased()) {
+            if (result != null && result.image != null) {
+                result.image.release();
+            }
+            return;
+        }
         super.onLoadResult(result);
         if (result == null) {
             onLoadFailed(TAG + ":onLoadResult(PowerImageResult result) result is null");
@@ -44,14 +50,17 @@ public class PowerImageExternalRequest extends PowerImageBaseRequest {
             onLoadFailed(result.errMsg);
             return;
         }
-        if (stoped) {
-            onLoadFailed(TAG + ":onLoadResult isStopped");
+        if (stoped || isRequestReleased()) {
+            if (result.image != null) {
+                result.image.release();
+            }
             return;
         }
         if(result.image == null || !result.image.isValid()){
             onLoadFailed(TAG + ":onLoadResult FlutterImage/bitmap is null or bitmap has recycled");
             return;
         }
+        result.image.setDiagnosticRequestId(requestId);
         Drawable imageDrawable = result.image.getDrawable();
         if(result.image instanceof FlutterMultiFrameImage){
             bitmap = ((FlutterMultiFrameImage) result.image).getCurrentFrame(imageDrawable);
@@ -91,8 +100,14 @@ public class PowerImageExternalRequest extends PowerImageBaseRequest {
     @Override
     public boolean stopTask() {
         stoped = true;
+        if (!markRequestReleased()) {
+            return true;
+        }
         imageTaskState = REQUEST_STATE_RELEASE_SUCCEED;
-        releaseBitmapPixels(bitmap);
+        if (bitmap != null && handle != 0) {
+            releaseBitmapPixels(bitmap);
+            handle = 0;
+        }
         bitmap = null;
         if (realResult != null && realResult.image != null) {
             realResult.image.release();

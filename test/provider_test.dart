@@ -209,9 +209,8 @@ void main() {
       PowerImageProvider textureProvider1 =
           PowerImageProvider.options(textureOptions1);
 
-      final ImageStreamCompleter completer =
-          textureProvider1.loadImage(
-              textureProvider1, (_, {getTargetSize}) => throw UnimplementedError());
+      final ImageStreamCompleter completer = textureProvider1.loadImage(
+          textureProvider1, (_, {getTargetSize}) => throw UnimplementedError());
       expect(completer.runtimeType == OneFrameImageStreamCompleter, true);
 
       const int textureId = 233;
@@ -219,13 +218,13 @@ void main() {
       const int height = 2;
       completer.addListener(
           ImageStreamListener((ImageInfo image, bool synchronousCall) {
-            expect(image.runtimeType == PowerTextureImageInfo, true);
-            PowerTextureImageInfo textureImageInfo = image as PowerTextureImageInfo;
-            expect(textureImageInfo.image.width == 1, true);
-            expect(textureImageInfo.image.height == 1, true);
-            expect(textureImageInfo.textureId == textureId, true);
-            expect(textureImageInfo.width == width, true);
-            expect(textureImageInfo.height == height, true);
+        expect(image.runtimeType == PowerTextureImageInfo, true);
+        PowerTextureImageInfo textureImageInfo = image as PowerTextureImageInfo;
+        expect(textureImageInfo.image.width == 1, true);
+        expect(textureImageInfo.image.height == 1, true);
+        expect(textureImageInfo.textureId == textureId, true);
+        expect(textureImageInfo.width == width, true);
+        expect(textureImageInfo.height == height, true);
       }));
 
       Map mockCompleteMap = {
@@ -243,7 +242,7 @@ void main() {
             .encodeSuccessEnvelope(mockCompleteMap),
         (_) {},
       );
-      await Future.delayed(const Duration(milliseconds: 500), (){});
+      await Future.delayed(const Duration(milliseconds: 500), () {});
     });
 
     test('load_multiFrame_success', () async {
@@ -255,11 +254,12 @@ void main() {
           renderingType: renderingTypeTexture);
 
       PowerImageProvider textureProvider1 =
-      PowerImageProvider.options(textureOptions1);
+          PowerImageProvider.options(textureOptions1);
 
-      final ImageStreamCompleter? completer = imageCache!.putIfAbsent(textureProvider1, ()  {
-        return textureProvider1.loadImage(
-            textureProvider1, (_, {getTargetSize}) => throw UnimplementedError());
+      final ImageStreamCompleter? completer =
+          imageCache!.putIfAbsent(textureProvider1, () {
+        return textureProvider1.loadImage(textureProvider1,
+            (_, {getTargetSize}) => throw UnimplementedError());
       });
       // final ImageStreamCompleter completer =
       // textureProvider1.load(textureProvider1, null);
@@ -268,7 +268,8 @@ void main() {
       const int width = 1;
       const int height = 2;
 
-      ImageStreamListener listener = ImageStreamListener((ImageInfo image, bool synchronousCall) {
+      ImageStreamListener listener =
+          ImageStreamListener((ImageInfo image, bool synchronousCall) {
         expect(image.runtimeType == PowerTextureImageInfo, true);
         PowerTextureImageInfo textureImageInfo = image as PowerTextureImageInfo;
         expect(textureImageInfo.image.width == 1, true);
@@ -294,10 +295,10 @@ void main() {
         platformChannel!.eventChannel.name,
         platformChannel.eventChannel.codec
             .encodeSuccessEnvelope(mockCompleteMap),
-            (_) {},
+        (_) {},
       );
 
-      await Future.delayed(const Duration(milliseconds: 500), (){
+      await Future.delayed(const Duration(milliseconds: 500), () {
         completer?.removeListener(listener);
         expect(imageCache!.containsKey(textureProvider1) == true, true);
         Future.microtask(() {
@@ -321,9 +322,8 @@ void main() {
       PowerImageProvider textureProvider1 =
           PowerImageProvider.options(textureOptions1);
 
-      final ImageStreamCompleter completer =
-          textureProvider1.loadImage(
-              textureProvider1, (_, {getTargetSize}) => throw UnimplementedError());
+      final ImageStreamCompleter completer = textureProvider1.loadImage(
+          textureProvider1, (_, {getTargetSize}) => throw UnimplementedError());
       expect(completer.runtimeType == OneFrameImageStreamCompleter, true);
 
       final Map mockCompleteMap = {
@@ -379,4 +379,5 @@ void main() {
       ],
     );
   });
+
 }

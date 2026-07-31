@@ -3,7 +3,7 @@ package com.taobao.power_image_example.macrobenchmark
 import android.os.SystemClock
 import androidx.benchmark.macro.CompilationMode
 import androidx.benchmark.macro.ExperimentalMetricApi
-import androidx.benchmark.macro.FrameTimingMetric
+import androidx.benchmark.macro.MemoryUsageMetric
 import androidx.benchmark.macro.StartupMode
 import androidx.benchmark.macro.TraceSectionMetric
 import androidx.benchmark.macro.junit4.MacrobenchmarkRule
@@ -23,19 +23,52 @@ class AnimatedTextureBenchmark {
 
     @Test
     @OptIn(ExperimentalMetricApi::class)
-    fun animatedTextureScroll() = benchmarkRule.measureRepeated(
+    fun powerImageAnimatedScroll() = animatedScroll(
+        entryLabel = "benchmark_power_image",
+        pageLabel = "benchmark_power_image_page",
+        includePowerImageTrace = true,
+    )
+
+    @Test
+    fun cachedNetworkImageAnimatedScroll() = animatedScroll(
+        entryLabel = "benchmark_cached_network_image",
+        pageLabel = "benchmark_cached_network_image_page",
+        includePowerImageTrace = false,
+    )
+
+    @Test
+    fun extendedImageAnimatedScroll() = animatedScroll(
+        entryLabel = "benchmark_extended_image",
+        pageLabel = "benchmark_extended_image_page",
+        includePowerImageTrace = false,
+    )
+
+    @OptIn(ExperimentalMetricApi::class)
+    private fun animatedScroll(
+        entryLabel: String,
+        pageLabel: String,
+        includePowerImageTrace: Boolean,
+    ) = benchmarkRule.measureRepeated(
         packageName = TARGET_PACKAGE,
-        metrics = listOf(
-            FrameTimingMetric(),
-            TraceSectionMetric(
-                sectionName = "PowerImage#renderAnimatedFrames",
-                mode = TraceSectionMetric.Mode.Count,
-            ),
-            TraceSectionMetric(
-                sectionName = "PowerImage#renderAnimatedFrames",
-                mode = TraceSectionMetric.Mode.Average,
-            ),
-        ),
+        metrics = if (includePowerImageTrace) {
+            listOf(
+                MemoryUsageMetric(MemoryUsageMetric.Mode.Max),
+                MemoryUsageMetric(MemoryUsageMetric.Mode.Last),
+                TraceSectionMetric(
+                    sectionName = "PowerImage#renderAnimatedFrames",
+                    mode = TraceSectionMetric.Mode.Count,
+                ),
+                TraceSectionMetric(
+                    sectionName = "PowerImage#renderAnimatedFrames",
+                    mode = TraceSectionMetric.Mode.Average,
+                ),
+            )
+        } else {
+            listOf(
+                MemoryUsageMetric(MemoryUsageMetric.Mode.Max),
+                MemoryUsageMetric(MemoryUsageMetric.Mode.Last),
+            )
+        },
         compilationMode = CompilationMode.Full(),
         startupMode = StartupMode.WARM,
         iterations = 5,
@@ -46,31 +79,56 @@ class AnimatedTextureBenchmark {
         startActivityAndWait()
 
         val texturePage = device.wait(
-            Until.findObject(By.desc("animated_benchmark")),
+            Until.findObject(By.desc(entryLabel)),
             UI_TIMEOUT_MILLIS,
         )
-        requireNotNull(texturePage) { "animated_benchmark entry was not found" }
+        requireNotNull(texturePage) { "$entryLabel entry was not found" }
         texturePage.click()
-        check(
-            device.wait(
-                Until.hasObject(By.desc("animated benchmark")),
+        if (!device.wait(Until.hasObject(By.desc(pageLabel)), UI_TIMEOUT_MILLIS)) {
+            // Flutter can briefly stall while the benchmark fixture and
+            // Impeller initialize on an emulator. Re-resolve the semantics
+            // node before retrying so a stale UiObject cannot lose the tap.
+            val retryEntry = device.wait(
+                Until.findObject(By.desc(entryLabel)),
                 UI_TIMEOUT_MILLIS,
-            ),
-        ) {
-            "animated benchmark page did not open"
+            )
+            requireNotNull(retryEntry) { "$entryLabel retry entry was not found" }
+            retryEntry.click()
+            check(
+                device.wait(
+                    Until.hasObject(By.desc(pageLabel)),
+                    UI_TIMEOUT_MILLIS,
+                ),
+            ) {
+                "$pageLabel did not open after retry"
+            }
         }
 
         // Allow the first visible animated WebP textures to start.
         SystemClock.sleep(1_000)
-        repeat(6) {
-            device.swipe(
+        // This 20-item, three-column grid has deliberately little overflow so
+        // that nearly all animations remain active. Bounce between both ends;
+        // repeated one-way swipes would become no-ops after the first gesture.
+        repeat(8) { iteration ->
+            val movingDown = iteration % 2 == 1
+            val startY = if (movingDown) {
+                device.displayHeight * 2 / 5
+            } else {
+                device.displayHeight * 4 / 5
+            }
+            val endY = if (movingDown) {
+                device.displayHeight * 4 / 5
+            } else {
+                device.displayHeight * 2 / 5
+            }
+            check(device.swipe(
                 device.displayWidth / 2,
-                device.displayHeight * 4 / 5,
+                startY,
                 device.displayWidth / 2,
-                device.displayHeight / 5,
+                endY,
                 20,
-            )
-            SystemClock.sleep(350)
+            )) { "Swipe gesture could not be injected" }
+            SystemClock.sleep(250)
         }
     }
 

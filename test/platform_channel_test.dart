@@ -41,6 +41,7 @@ void main() {
 
       PowerImageLoader.instance
           .setup(PowerImageSetupOptions(renderingTypeExternal));
+      calls.clear();
     });
 
     test('startImageRequests', () async {
@@ -90,6 +91,17 @@ void main() {
             'uniqueKey': 'texture-key',
             'active': false,
           })
+        ],
+      );
+    });
+
+    test('setPowerImageDebugLogging', () async {
+      PowerImageLoader.instance.channel.setDebugLogging(true);
+
+      expect(
+        calls['setPowerImageDebugLogging'],
+        <Matcher>[
+          isMethodCall('setPowerImageDebugLogging', arguments: true),
         ],
       );
     });

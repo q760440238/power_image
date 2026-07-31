@@ -16,6 +16,8 @@ abstract class PowerImageChannelImpl {
   void releaseImageRequests(List<PowerImageRequest> requests);
 
   void setImageAnimationActive(String uniqueKey, bool active);
+
+  void setDebugLogging(bool enabled);
 }
 
 class PowerImageChannel {
@@ -35,5 +37,9 @@ class PowerImageChannel {
 
   void setImageAnimationActive(String uniqueKey, bool active) {
     impl!.setImageAnimationActive(uniqueKey, active);
+  }
+
+  void setDebugLogging(bool enabled) {
+    impl!.setDebugLogging(enabled);
   }
 }

@@ -11,9 +11,9 @@ class PowerTextureImageProvider extends PowerImageProvider {
 
   @override
   FutureOr<ImageInfo> createImageInfo(Map map) {
-    int? textureId = map['textureId'];
-    int? width = map['width'];
-    int? height = map['height'];
+    final int? textureId = map['textureId'];
+    final int? width = map['width'];
+    final int? height = map['height'];
     return PowerTextureImageInfo.create(
         textureId: textureId, width: width, height: height);
   }

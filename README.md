@@ -81,11 +81,21 @@ Initialize and set the global default rendering mode, renderingTypeTexture is te
 In addition, there are exception reports in PowerImageSetupOptions, and the sampling rate of exception reports can be set.
 ```dart
     PowerImageLoader.instance.setup(PowerImageSetupOptions(renderingTypeTexture,
+        debugLogging: true,
         errorCallbackSamplingRate: 1.0,
         errorCallback: (PowerImageLoadException exception) {
 
     }));
 ```
+
+On Android, `debugLogging: true` enables structured request, Surface lifecycle,
+animated-frame coalescing and render-time logs. It is disabled by default. Read
+the logs with `adb logcat -s PowerImage` while diagnosing performance.
+
+### Android animated image adapters
+
+Animated GIF and WebP draw their `Drawable` directly into a Flutter
+`SurfaceProducer`; frames are coalesced at VSync and stale frames are dropped.
 
 
 
