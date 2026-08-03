@@ -4,6 +4,8 @@ import 'package:power_image/src/external/power_external_image.dart';
 import 'package:power_image/src/tools/power_num_safe.dart';
 import 'package:power_image_ext/image_ext.dart';
 
+import 'network/power_image_network_controls.dart';
+import 'network/power_network_image_provider.dart';
 import 'options/power_image_request_options.dart';
 import 'external/power_external_image_provider.dart';
 import 'options/power_image_request_options_src.dart';
@@ -11,9 +13,11 @@ import 'texture/power_texture_image.dart';
 import 'texture/power_texture_image_provider.dart';
 
 class PowerImage extends StatefulWidget {
-  /// 网络图，将从 native 图片库中获取图片。
+  /// 网络图。Android HTTP(S) 默认由单一 Flutter ImageProvider 下载并按内容解码。
+  /// 需要原生 Drawable/Texture 时显式设置 [networkBackend] 为
+  /// [PowerImageNetworkBackend.native]。
   ///
-  /// 关于 renderingType 渲染方式：renderingTypeExternal/renderingTypeTexture
+  /// 关于原生后端 renderingType 渲染方式：renderingTypeExternal/renderingTypeTexture
   /// 可以设置全局  PowerImageLoader.instance.setup(PowerImageSetupOptions(renderingTypeExternal));
   /// 也可单独设置某张图的渲染方式
   ///
@@ -21,6 +25,16 @@ class PowerImage extends StatefulWidget {
     String src, {
     Key? key,
     String? renderingType,
+    PowerImageNetworkBackend networkBackend = PowerImageNetworkBackend.auto,
+    Map<String, String>? headers,
+    String? cacheKey,
+    Duration? timeout,
+    int retryCount = 0,
+    Duration retryDelay = Duration.zero,
+    PowerImageCancellationToken? cancellationToken,
+    bool cacheRawBytes = true,
+    PowerImageNetworkPriority networkPriority =
+        PowerImageNetworkPriority.visible,
     double? imageWidth,
     double? imageHeight,
     this.width,
@@ -35,6 +49,15 @@ class PowerImage extends StatefulWidget {
             src: PowerImageRequestOptionsSrcNormal(src: src),
             renderingType: renderingType,
             imageType: imageTypeNetwork,
+            networkBackend: networkBackend,
+            headers: headers,
+            cacheKey: cacheKey,
+            timeout: timeout,
+            retryCount: retryCount,
+            retryDelay: retryDelay,
+            cancellationToken: cancellationToken,
+            cacheRawBytes: cacheRawBytes,
+            networkPriority: networkPriority,
             imageWidth: imageWidth ?? makeNumValid(width, null),
             imageHeight: imageHeight ?? makeNumValid(height, null))),
         imageBuilder = null,
@@ -252,6 +275,22 @@ class PowerImageState extends State<PowerImage> {
         height: widget.height ?? 0,
       );
     };
+
+    if (widget.image is PowerNetworkImageProvider &&
+        widget.imageBuilder == null) {
+      return Image(
+        image: widget.image,
+        frameBuilder: widget.frameBuilder,
+        errorBuilder: errorWidgetBuilder,
+        width: widget.width,
+        height: widget.height,
+        fit: widget.fit,
+        alignment: widget.alignment,
+        filterQuality: FilterQuality.low,
+        semanticLabel: widget.semanticLabel,
+        excludeFromSemantics: widget.excludeFromSemantics,
+      );
+    }
 
     if (widget.image.runtimeType == PowerTextureImageProvider) {
       return PowerTextureImage(

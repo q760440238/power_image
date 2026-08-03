@@ -11,6 +11,7 @@ import 'power_image_platform_channel.dart';
 import 'power_image_channel.dart';
 import 'power_image_request.dart';
 import '../options/power_image_request_options.dart';
+import '../network/power_image_network_controls.dart';
 import 'power_image_setup_options.dart';
 
 class PowerImageCompleter {
@@ -31,12 +32,16 @@ class PowerImageLoader {
   String get globalRenderType => _globalRenderType;
   String _globalRenderType = defaultGlobalRenderType;
 
+  PowerImageRawBytesCache? get rawBytesCache => _rawBytesCache;
+  PowerImageRawBytesCache? _rawBytesCache;
+
   PowerImageLoader._() {
     channel.impl = PowerImagePlatformChannel();
   }
 
   void setup(PowerImageSetupOptions? options) {
     _globalRenderType = options?.globalRenderType ?? defaultGlobalRenderType;
+    _rawBytesCache = options?.rawBytesCache;
     PowerImageMonitor.instance().errorCallback = options?.errorCallback;
     PowerImageMonitor.instance().errorCallbackSamplingRate =
         options?.errorCallbackSamplingRate;
@@ -120,6 +125,16 @@ class PowerImageLoader {
   ///       PowerImageRequestOptions options, BuildContext context)
   Future<PowerImageInfo?> prefetchNetworkImage(String url, BuildContext context,
       {String? renderingType,
+      PowerImageNetworkBackend networkBackend = PowerImageNetworkBackend.auto,
+      Map<String, String>? headers,
+      String? cacheKey,
+      Duration? timeout,
+      int retryCount = 0,
+      Duration retryDelay = Duration.zero,
+      PowerImageCancellationToken? cancellationToken,
+      bool cacheRawBytes = true,
+      PowerImageNetworkPriority networkPriority =
+          PowerImageNetworkPriority.background,
       double? imageWidth,
       double? imageHeight,
       ImageErrorListener? onError}) {
@@ -128,6 +143,15 @@ class PowerImageLoader {
             src: PowerImageRequestOptionsSrcNormal(src: url),
             renderingType: renderingType,
             imageType: imageTypeNetwork,
+            networkBackend: networkBackend,
+            headers: headers,
+            cacheKey: cacheKey,
+            timeout: timeout,
+            retryCount: retryCount,
+            retryDelay: retryDelay,
+            cancellationToken: cancellationToken,
+            cacheRawBytes: cacheRawBytes,
+            networkPriority: networkPriority,
             imageWidth: imageWidth,
             imageHeight: imageHeight),
         context,
@@ -241,7 +265,13 @@ class PowerImageLoader {
     listener = ImageStreamListener(
       (ImageInfo image, bool sync) {
         if (!completer.isCompleted) {
-          completer.complete(image as PowerImageInfo);
+          completer.complete(image is PowerImageInfo
+              ? image
+              : PowerImageInfo(
+                  image: image.image.clone(),
+                  scale: image.scale,
+                  debugLabel: image.debugLabel,
+                ));
         }
         // Give callers until at least the end of the frame to subscribe to the
         // image stream.

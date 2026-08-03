@@ -353,6 +353,20 @@ void main() {
       expect(find.byType(ImageExt), findsOneWidget);
     });
 
+    testWidgets('Flutter codec network images use the standard Image widget',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(
+        PowerImage.network(
+          'https://example.invalid/test.webp',
+          networkBackend: PowerImageNetworkBackend.flutterCodec,
+        ),
+        phase: EnginePhase.build,
+      );
+
+      expect(find.byType(Image), findsOneWidget);
+      expect(find.byType(ImageExt), findsNothing);
+    });
+
     testWidgets('PowerTextureImage', (WidgetTester tester) async {
       PowerTextureImage image = PowerTextureImage(
           provider: testPowerImageProvider() as PowerTextureImageProvider);
@@ -395,8 +409,16 @@ void main() {
       final PowerTextureImage image = PowerTextureImage(
           provider: testPowerImageProvider() as PowerTextureImageProvider);
 
-      await tester.pumpWidget(TickerMode(enabled: true, child: image),
-          phase: EnginePhase.layout);
+      await tester.pumpWidget(TickerMode(enabled: true, child: image));
+      final PowerTextureState state =
+          tester.state<PowerTextureState>(find.byType(PowerTextureImage));
+      PowerTextureImageInfo? textureInfo;
+      await tester.runAsync(() async {
+        textureInfo = await testTextureImageInfo(textureId: 11);
+      });
+      state.buildImage(state.context, textureInfo);
+      await tester.pump();
+      await tester.idle();
       expect(animationCalls.last.arguments['active'], true);
 
       await tester.pumpWidget(TickerMode(enabled: false, child: image),
@@ -410,6 +432,40 @@ void main() {
 
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       expect(animationCalls.last.arguments['active'], true);
+      textureInfo!.dispose();
+    });
+
+    testWidgets('Flutter codec frames do not send native visibility messages',
+        (WidgetTester tester) async {
+      final List<MethodCall> animationCalls = <MethodCall>[];
+      platformChannel!.methodChannel
+          .setMockMethodCallHandler((MethodCall methodCall) async {
+        if (methodCall.method == 'setImageAnimationActive') {
+          animationCalls.add(methodCall);
+        }
+        return <Map<String, dynamic>>[<String, dynamic>{}];
+      });
+
+      final PowerTextureImage image = PowerTextureImage(
+          provider: testPowerImageProvider() as PowerTextureImageProvider);
+      await tester.pumpWidget(TickerMode(enabled: true, child: image));
+      final PowerTextureState state =
+          tester.state<PowerTextureState>(find.byType(PowerTextureImage));
+      ImageInfo? codecFrame;
+      await tester.runAsync(() async {
+        codecFrame = await Future<ImageInfo>.value(
+          TestPowerExternalImageProvider(testRequestOptions()).createImageInfo(
+            <String, dynamic>{},
+          ),
+        );
+      });
+
+      final Widget rendered = state.buildImage(state.context, codecFrame);
+      await tester.pump();
+
+      expect(rendered, isA<RawImage>());
+      expect(animationCalls, isEmpty);
+      codecFrame!.dispose();
     });
   });
 }

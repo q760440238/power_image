@@ -1,0 +1,181 @@
+{
+    "context": {
+        "build": {
+            "brand": "HUAWEI",
+            "device": "HWVOG",
+            "fingerprint": "HUAWEI/VOG-AL10/HWVOG:10/HUAWEIVOG-AL10/10.1.0.162C00:user/release-keys",
+            "id": "HUAWEIVOG-AL10",
+            "model": "VOG-AL10",
+            "type": "user",
+            "version": {
+                "codename": "REL",
+                "sdk": 29
+            }
+        },
+        "cpuCoreCount": 8,
+        "cpuLocked": true,
+        "cpuMaxFreqHz": 2600000000,
+        "memTotalBytes": 7975907328,
+        "sustainedPerformanceModeEnabled": false,
+        "artMainlineVersion": -1,
+        "osCodenameAbbreviated": "H",
+        "compilationMode": "unknown",
+        "payload": {}
+    },
+    "benchmarks": [
+        {
+            "name": "powerImageFirstFrameDisplayed",
+            "params": {},
+            "className": "com.taobao.power_image_example.macrobenchmark.FirstFrameDisplayBenchmark",
+            "totalRunTimeNs": 79882838008,
+            "metrics": {
+                "firstFrameDisplayedAverageMs": {
+                    "minimum": 39.180209,
+                    "maximum": 46.382291,
+                    "median": 41.9666665,
+                    "coefficientOfVariation": 0.05280983390020005,
+                    "runs": [
+                        45.595834,
+                        39.180209,
+                        42.95625,
+                        41.615625,
+                        42.317708,
+                        40.60052,
+                        40.816146,
+                        41.154167,
+                        46.382291,
+                        43.025521
+                    ]
+                },
+                "firstFrameDisplayedCount": {
+                    "minimum": 1.0,
+                    "maximum": 1.0,
+                    "median": 1.0,
+                    "coefficientOfVariation": 0.0,
+                    "runs": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                "memoryHeapSizeMaxKb": {
+                    "minimum": 1770.0,
+                    "maximum": 2219.0,
+                    "median": 1810.5,
+                    "coefficientOfVariation": 0.0725143826749892,
+                    "runs": [
+                        2219.0,
+                        1802.0,
+                        1803.0,
+                        1770.0,
+                        1819.0,
+                        1819.0,
+                        1821.0,
+                        1770.0,
+                        1818.0,
+                        1787.0
+                    ]
+                },
+                "memoryRssAnonMaxKb": {
+                    "minimum": 51640.0,
+                    "maximum": 55788.0,
+                    "median": 52506.0,
+                    "coefficientOfVariation": 0.02329959782044096,
+                    "runs": [
+                        55788.0,
+                        52160.0,
+                        51668.0,
+                        52872.0,
+                        51640.0,
+                        52696.0,
+                        52316.0,
+                        51712.0,
+                        53280.0,
+                        52964.0
+                    ]
+                },
+                "memoryRssFileMaxKb": {
+                    "minimum": 114276.0,
+                    "maximum": 199796.0,
+                    "median": 198670.0,
+                    "coefficientOfVariation": 0.19145895163283405,
+                    "runs": [
+                        117828.0,
+                        114276.0,
+                        199796.0,
+                        199140.0,
+                        199712.0,
+                        198764.0,
+                        199384.0,
+                        197084.0,
+                        197420.0,
+                        198576.0
+                    ]
+                }
+            },
+            "sampledMetrics": {},
+            "warmupIterations": 0,
+            "repeatIterations": 10,
+            "thermalThrottleSleepSeconds": 0,
+            "profilerOutputs": [
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 0",
+                    "filename": "FirstFrameDisplayBenchmark_powerImageFirstFrameDisplayed_iter000_2026-08-03-12-46-15.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 1",
+                    "filename": "FirstFrameDisplayBenchmark_powerImageFirstFrameDisplayed_iter001_2026-08-03-12-46-22.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 2",
+                    "filename": "FirstFrameDisplayBenchmark_powerImageFirstFrameDisplayed_iter002_2026-08-03-12-46-29.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 3",
+                    "filename": "FirstFrameDisplayBenchmark_powerImageFirstFrameDisplayed_iter003_2026-08-03-12-46-36.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 4",
+                    "filename": "FirstFrameDisplayBenchmark_powerImageFirstFrameDisplayed_iter004_2026-08-03-12-46-43.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 5",
+                    "filename": "FirstFrameDisplayBenchmark_powerImageFirstFrameDisplayed_iter005_2026-08-03-12-46-50.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 6",
+                    "filename": "FirstFrameDisplayBenchmark_powerImageFirstFrameDisplayed_iter006_2026-08-03-12-46-58.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 7",
+                    "filename": "FirstFrameDisplayBenchmark_powerImageFirstFrameDisplayed_iter007_2026-08-03-12-47-05.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 8",
+                    "filename": "FirstFrameDisplayBenchmark_powerImageFirstFrameDisplayed_iter008_2026-08-03-12-47-12.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 9",
+                    "filename": "FirstFrameDisplayBenchmark_powerImageFirstFrameDisplayed_iter009_2026-08-03-12-47-19.perfetto-trace"
+                }
+            ]
+        }
+    ]
+}

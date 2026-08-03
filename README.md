@@ -56,25 +56,15 @@ dependency_overrides:
 ## Setup
 
 ### Flutter
-#### 1. Replace `ImageCache` with `ImageCacheExt`.
+#### 1. Use Flutter's standard binding and image cache
+
+PowerImage no longer requires a global `PowerImageBinding` or
+`ImageCacheExt`. Native texture resources are owned by their stream completer
+and released when its last listener is removed. Use Flutter's standard binding:
 
 ```dart
-/// call before runApp()
-PowerImageBinding();
+WidgetsFlutterBinding.ensureInitialized();
 ```
-or
-```dart
-/// return ImageCacheExt in createImageCache(), 
-/// if you have extends with WidgetsFlutterBinding
-class XXX extends WidgetsFlutterBinding {
-  @override
-  ImageCache createImageCache() {
-    return ImageCacheExt();
-  }
-}
-```
-
-
 
 #### 2. Setup PowerImageLoader
 Initialize and set the global default rendering mode, renderingTypeTexture is texture mode, renderingTypeExternal is ffi mode
@@ -96,9 +86,70 @@ the logs with `adb logcat -s PowerImage` while diagnosing performance.
 
 Animated GIF and custom animated `Drawable` adapters draw directly into a
 Flutter `SurfaceProducer`; frames are coalesced at VSync and stale frames are
-dropped. The Android example keeps network WebP as a compressed Glide cache
-file and delegates animation decoding to Flutter, avoiding one native decoder
-and triple-buffered Surface per image.
+dropped. Android HTTP(S) images now default to one Flutter `ImageProvider`: encoded
+bytes go directly to Flutter's codec, whose content/magic detection does not
+depend on a URL suffix. This avoids a native request, placeholder `ImageInfo`
+and nested `Image.file` cache entry.
+
+Use `networkBackend: PowerImageNetworkBackend.native` to opt into the separate
+Glide/Drawable/Surface path. A custom native loader may still hand encoded data
+or a cache-file path to Flutter; that compatibility path now publishes real
+codec frames on the original stream and removes its Android request immediately
+after successful delivery.
+
+The direct codec path can use the built-in encoded-byte disk cache or another
+implementation of the lightweight `PowerImageRawBytesCache` interface.
+The cache returns `Uint8List`; a hit is passed straight to
+`ImmutableBuffer`/`ui.Codec`, so no temporary `Image.file` or nested provider is
+created. Equal concurrent misses share one byte download. Visible requests are
+scheduled before queued prefetch work, with independent limits for transfer and
+decode. Cache writes and LRU touches are batched after the first displayed frame,
+so disk maintenance is not on the first-frame critical path.
+
+```dart
+final temporaryDirectory = await getTemporaryDirectory();
+final rawBytesCache = PowerImageFileRawBytesCache(
+  // Give each cache instance its own directory.
+  directory: Directory(
+    '${temporaryDirectory.path}${Platform.pathSeparator}power_image_raw_bytes',
+  ),
+  maxSizeBytes: 200 * 1024 * 1024,
+);
+await rawBytesCache.warmUp();
+
+PowerImageLoader.instance.setup(PowerImageSetupOptions(
+  renderingTypeTexture,
+  rawBytesCache: rawBytesCache,
+));
+
+final cancelToken = PowerImageCancellationToken();
+
+PowerImage.network(
+  imageUrl,
+  headers: const {'Authorization': 'Bearer token'},
+  cacheKey: 'user-42-avatar-v3',
+  timeout: const Duration(seconds: 5), // applied to every attempt
+  retryCount: 2,                       // two retries after the first attempt
+  retryDelay: const Duration(milliseconds: 100),
+  cancellationToken: cancelToken,
+);
+
+// For example, when the owning screen is disposed:
+cancelToken.cancel();
+```
+
+The built-in cache keeps only metadata in memory. It uses capacity-bounded LRU,
+same-key read/write single-flight, same-directory atomic replacement and
+background cleanup. Its file modification times preserve an approximate LRU
+order after a restart. Use one instance per dedicated directory.
+
+`cacheKey` defaults to the URL. This cache deliberately has no TTL or HTTP
+revalidation: use it only for immutable CDN URLs or explicitly versioned cache
+keys, including when headers can change the bytes returned by the same URL.
+Retries are limited to I/O/timeouts and HTTP 408, 429, and 5xx responses;
+cancellation is never retried. Cache read/write failures fall back to the
+network or the already decoded image. Set `cacheRawBytes: false` to bypass the
+injected cache for one request.
 
 
 
@@ -779,6 +830,7 @@ network image:
     String src, {
     Key? key,
     String? renderingType,
+    PowerImageNetworkBackend networkBackend = PowerImageNetworkBackend.auto,
     double? imageWidth,
     double? imageHeight,
     this.width,

@@ -148,6 +148,9 @@ public abstract class PowerImageBaseRequest {
                         requestId,
                         "elapsedMs=" + PowerImageDiagnostics.elapsedMillis(createdAtNanos));
                 engineContext.sendImageStateEvent(PowerImageBaseRequest.this.encode(), true);
+                if (releaseAfterSuccessfulDelivery()) {
+                    engineContext.releaseCompletedRequest(PowerImageBaseRequest.this);
+                }
             }
         });
     }
@@ -177,6 +180,10 @@ public abstract class PowerImageBaseRequest {
     }
 
     public boolean stopTask() {
+        return false;
+    }
+
+    protected boolean releaseAfterSuccessfulDelivery() {
         return false;
     }
 

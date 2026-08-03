@@ -1,12 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:power_image/power_image.dart';
-import 'package:power_image_ext/image_cache_ext.dart';
 
 void main() {
   setUp(() {
-    PowerImageBinding();
+    WidgetsFlutterBinding.ensureInitialized();
   });
 
   tearDown(() {
@@ -20,8 +18,8 @@ void main() {
   group('cache_test', () {
     setUp(() {});
 
-    test('PowerImageBinding', () {
-      expect(imageCache.runtimeType == ImageCacheExt, true);
+    test('uses Flutter standard ImageCache without a custom binding', () {
+      expect(imageCache, isA<ImageCache>());
     });
   });
 }

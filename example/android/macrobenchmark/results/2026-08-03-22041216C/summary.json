@@ -1,0 +1,46 @@
+{
+  "device": {
+    "brand": "Redmi",
+    "model": "22041216C",
+    "device": "xaga",
+    "android": 14,
+    "sdk": 34,
+    "build": "OS2.0.12.0.ULOCNXM",
+    "fingerprint": "Redmi/xaga/xaga:14/UP1A.231005.007/OS2.0.12.0.ULOCNXM:user/release-keys"
+  },
+  "source": "AndroidX Macrobenchmark instrumentation output",
+  "benchmarks": {
+    "coldLoad": {
+      "iterations": 10,
+      "operationMs": {"minimum": 28.053462, "median": 39.6276925, "maximum": 44.5},
+      "memoryGpuMaxKb": {"minimum": 83200.0, "median": 83236.0, "maximum": 83552.0},
+      "memoryHeapSizeMaxKb": {"minimum": 8524.0, "median": 8565.5, "maximum": 8612.0},
+      "memoryRssAnonMaxKb": {"minimum": 60968.0, "median": 62036.0, "maximum": 63172.0},
+      "memoryRssFileMaxKb": {"minimum": 170508.0, "median": 171038.0, "maximum": 179740.0}
+    },
+    "rawBytesDiskHit": {
+      "iterations": 10,
+      "operationMs": {"minimum": 25.068, "median": 31.566, "maximum": 61.1},
+      "memoryGpuMaxKb": {"minimum": 93472.0, "median": 99088.0, "maximum": 104668.0},
+      "memoryHeapSizeMaxKb": {"minimum": 8579.0, "median": 8634.5, "maximum": 8653.0},
+      "memoryRssAnonMaxKb": {"minimum": 61952.0, "median": 63598.0, "maximum": 65604.0},
+      "memoryRssFileMaxKb": {"minimum": 180648.0, "median": 181392.0, "maximum": 181844.0}
+    },
+    "flutterImageCacheHit": {
+      "iterations": 10,
+      "operationMs": {"minimum": 7.904, "median": 12.651731, "maximum": 28.0},
+      "memoryGpuMaxKb": {"minimum": 93488.0, "median": 93540.0, "maximum": 104536.0},
+      "memoryHeapSizeMaxKb": {"minimum": 8599.0, "median": 8649.5, "maximum": 8687.0},
+      "memoryRssAnonMaxKb": {"minimum": 62668.0, "median": 64380.0, "maximum": 65072.0},
+      "memoryRssFileMaxKb": {"minimum": 180348.0, "median": 180916.0, "maximum": 181340.0}
+    },
+    "releaseAndRebuild100NativeSurfaces": {
+      "iterations": 5,
+      "operationMs": {"minimum": 431.939154, "median": 530.07723, "maximum": 541.504923},
+      "memoryGpuMaxKb": {"minimum": 147380.0, "median": 148708.0, "maximum": 151868.0},
+      "memoryHeapSizeMaxKb": {"minimum": 69926.0, "median": 71206.0, "maximum": 72044.0},
+      "memoryRssAnonMaxKb": {"minimum": 172076.0, "median": 179728.0, "maximum": 184408.0},
+      "memoryRssFileMaxKb": {"minimum": 254464.0, "median": 256576.0, "maximum": 260244.0}
+    }
+  }
+}

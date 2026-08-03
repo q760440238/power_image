@@ -1,0 +1,144 @@
+{
+    "context": {
+        "build": {
+            "brand": "HUAWEI",
+            "device": "HWVOG",
+            "fingerprint": "HUAWEI/VOG-AL10/HWVOG:10/HUAWEIVOG-AL10/10.1.0.162C00:user/release-keys",
+            "id": "HUAWEIVOG-AL10",
+            "model": "VOG-AL10",
+            "type": "user",
+            "version": {
+                "codename": "REL",
+                "sdk": 29
+            }
+        },
+        "cpuCoreCount": 8,
+        "cpuLocked": false,
+        "cpuMaxFreqHz": 2600000000,
+        "memTotalBytes": 7975907328,
+        "sustainedPerformanceModeEnabled": false,
+        "artMainlineVersion": -1,
+        "osCodenameAbbreviated": "H",
+        "compilationMode": "unknown",
+        "payload": {}
+    },
+    "benchmarks": [
+        {
+            "name": "powerImageFlutterCodecAnimatedScroll",
+            "params": {},
+            "className": "com.taobao.power_image_example.macrobenchmark.FlutterCodecAnimatedWebpBenchmark",
+            "totalRunTimeNs": 143633976540,
+            "metrics": {
+                "flutterRasterQueueBufferAverageMs": {
+                    "minimum": 0.5093646662777129,
+                    "maximum": 0.5592717085852479,
+                    "median": 0.5433812797546013,
+                    "coefficientOfVariation": 0.035244005079088224,
+                    "runs": [
+                        0.5093646662777129,
+                        0.5592717085852479,
+                        0.5305595508474577,
+                        0.5433812797546013,
+                        0.5469951509202454
+                    ]
+                },
+                "flutterRasterQueueBufferCount": {
+                    "minimum": 815.0,
+                    "maximum": 857.0,
+                    "median": 826.0,
+                    "coefficientOfVariation": 0.020778563446962866,
+                    "runs": [
+                        857.0,
+                        827.0,
+                        826.0,
+                        815.0,
+                        815.0
+                    ]
+                },
+                "flutterRasterQueueBufferMaxMs": {
+                    "minimum": 1.2625,
+                    "maximum": 2.392709,
+                    "median": 1.597916,
+                    "coefficientOfVariation": 0.26596907297496425,
+                    "runs": [
+                        2.209375,
+                        1.597916,
+                        1.2625,
+                        2.392709,
+                        1.538541
+                    ]
+                },
+                "memoryHeapSizeMaxKb": {
+                    "minimum": 5655.0,
+                    "maximum": 6856.0,
+                    "median": 5737.0,
+                    "coefficientOfVariation": 0.0853642199662591,
+                    "runs": [
+                        6856.0,
+                        5737.0,
+                        5810.0,
+                        5655.0,
+                        5705.0
+                    ]
+                },
+                "memoryRssAnonMaxKb": {
+                    "minimum": 123324.0,
+                    "maximum": 135152.0,
+                    "median": 126804.0,
+                    "coefficientOfVariation": 0.03519962554402287,
+                    "runs": [
+                        135152.0,
+                        126476.0,
+                        130440.0,
+                        123324.0,
+                        126804.0
+                    ]
+                },
+                "memoryRssFileMaxKb": {
+                    "minimum": 477012.0,
+                    "maximum": 596056.0,
+                    "median": 571160.0,
+                    "coefficientOfVariation": 0.08829348743210046,
+                    "runs": [
+                        541648.0,
+                        477012.0,
+                        592760.0,
+                        571160.0,
+                        596056.0
+                    ]
+                }
+            },
+            "sampledMetrics": {},
+            "warmupIterations": 0,
+            "repeatIterations": 5,
+            "thermalThrottleSleepSeconds": 0,
+            "profilerOutputs": [
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 0",
+                    "filename": "FlutterCodecAnimatedWebpBenchmark_powerImageFlutterCodecAnimatedScroll_iter000_2026-08-03-13-09-12.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 1",
+                    "filename": "FlutterCodecAnimatedWebpBenchmark_powerImageFlutterCodecAnimatedScroll_iter001_2026-08-03-13-09-39.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 2",
+                    "filename": "FlutterCodecAnimatedWebpBenchmark_powerImageFlutterCodecAnimatedScroll_iter002_2026-08-03-13-10-04.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 3",
+                    "filename": "FlutterCodecAnimatedWebpBenchmark_powerImageFlutterCodecAnimatedScroll_iter003_2026-08-03-13-10-30.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 4",
+                    "filename": "FlutterCodecAnimatedWebpBenchmark_powerImageFlutterCodecAnimatedScroll_iter004_2026-08-03-13-10-55.perfetto-trace"
+                }
+            ]
+        }
+    ]
+}

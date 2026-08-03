@@ -3,6 +3,7 @@ package com.taobao.power_image;
 import androidx.annotation.NonNull;
 
 import com.taobao.power_image.request.PowerImageRequestManager;
+import com.taobao.power_image.request.PowerImageBaseRequest;
 
 import java.util.List;
 import java.util.Map;
@@ -64,6 +65,10 @@ public class PowerImageEngineContext implements MethodChannel.MethodCallHandler 
         if (powerImageEventSink != null) {
             powerImageEventSink.sendImageStateEvent(event, success);
         }
+    }
+
+    public void releaseCompletedRequest(PowerImageBaseRequest request) {
+        powerImageRequestManager.releaseCompletedRequest(request);
     }
 
     @Override

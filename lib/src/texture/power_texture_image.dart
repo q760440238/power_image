@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/widgets.dart';
 
 import 'package:power_image_ext/image_ext.dart';
@@ -54,6 +52,7 @@ class PowerTextureState extends State<PowerTextureImage>
   final Object _visibilityOwner = Object();
   bool _tickerActive = true;
   bool _applicationActive = true;
+  bool _usesNativeTexture = false;
 
   @override
   void initState() {
@@ -67,18 +66,19 @@ class PowerTextureState extends State<PowerTextureImage>
   void didChangeDependencies() {
     super.didChangeDependencies();
     _tickerActive = TickerMode.of(context);
-    _updateAnimationState();
+    if (_usesNativeTexture) {
+      _updateAnimationState();
+    }
   }
 
   @override
   void didUpdateWidget(covariant PowerTextureImage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.provider.options != widget.provider.options) {
+    if (oldWidget.provider.options != widget.provider.options &&
+        _usesNativeTexture) {
       PowerImageLoader.instance.removeTextureVisibility(
-        oldWidget.provider.options,
-        _visibilityOwner,
-      );
-      _updateAnimationState();
+          oldWidget.provider.options, _visibilityOwner);
+      _usesNativeTexture = false;
     }
   }
 
@@ -86,28 +86,32 @@ class PowerTextureState extends State<PowerTextureImage>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final bool applicationActive = state == AppLifecycleState.resumed;
     if (_applicationActive != applicationActive) {
-      setState(() {
-        _applicationActive = applicationActive;
-      });
-      _updateAnimationState();
+      _applicationActive = applicationActive;
+      if (_usesNativeTexture) {
+        _updateAnimationState();
+      }
     }
   }
 
   void _updateAnimationState() {
-    PowerImageLoader.instance.updateTextureVisibility(
-      widget.provider.options,
-      _visibilityOwner,
-      _tickerActive && _applicationActive,
-    );
+    if (_usesNativeTexture) {
+      PowerImageLoader.instance.updateTextureVisibility(
+        widget.provider.options,
+        _visibilityOwner,
+        _tickerActive && _applicationActive,
+      );
+    }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    PowerImageLoader.instance.removeTextureVisibility(
-      widget.provider.options,
-      _visibilityOwner,
-    );
+    if (_usesNativeTexture) {
+      PowerImageLoader.instance.removeTextureVisibility(
+        widget.provider.options,
+        _visibilityOwner,
+      );
+    }
     super.dispose();
   }
 
@@ -128,46 +132,27 @@ class PowerTextureState extends State<PowerTextureImage>
   }
 
   Widget buildImage(BuildContext context, ImageInfo? imageInfo) {
-    if (imageInfo == null || imageInfo is! PowerTextureImageInfo) {
+    if (imageInfo == null) {
       return SizedBox(width: widget.width, height: widget.height);
     }
 
-    PowerTextureImageInfo textureImageInfo = imageInfo;
-    if (textureImageInfo is PowerFlutterCodecImageInfo) {
-      if (!_tickerActive || !_applicationActive) {
-        return SizedBox(width: widget.width, height: widget.height);
-      }
-      final String? encodedFilePath = textureImageInfo.encodedFilePath;
-      if (encodedFilePath != null) {
-        return Image.file(
-          File(encodedFilePath),
-          width: widget.width,
-          height: widget.height,
-          fit: widget.fit,
-          alignment: widget.alignment,
-          errorBuilder: widget.errorBuilder,
-          excludeFromSemantics: true,
-          gaplessPlayback: true,
-          cacheWidth: _validDecodeDimension(textureImageInfo.targetWidth),
-          cacheHeight: _validDecodeDimension(textureImageInfo.targetHeight),
-        );
-      }
-      final List<int>? encodedData = textureImageInfo.encodedData;
-      if (encodedData == null) {
-        return SizedBox(width: widget.width, height: widget.height);
-      }
-      return Image.memory(
-        textureImageInfo.encodedData!,
+    if (imageInfo is! PowerTextureImageInfo) {
+      _setUsesNativeTexture(false);
+      return RawImage(
+        image: imageInfo.image,
+        scale: imageInfo.scale,
         width: widget.width,
         height: widget.height,
         fit: widget.fit,
         alignment: widget.alignment,
-        errorBuilder: widget.errorBuilder,
-        excludeFromSemantics: true,
-        gaplessPlayback: true,
-        cacheWidth: _validDecodeDimension(textureImageInfo.targetWidth),
-        cacheHeight: _validDecodeDimension(textureImageInfo.targetHeight),
       );
+    }
+
+    final PowerTextureImageInfo textureImageInfo = imageInfo;
+    _setUsesNativeTexture(true);
+    final int? textureId = textureImageInfo.textureId;
+    if (textureId == null) {
+      return SizedBox(width: widget.width, height: widget.height);
     }
     return ClipRect(
       child: SizedBox(
@@ -177,7 +162,7 @@ class PowerTextureState extends State<PowerTextureImage>
           child: SizedBox(
             width: textureImageInfo.width?.toDouble() ?? widget.width,
             height: textureImageInfo.height?.toDouble() ?? widget.height,
-            child: Texture(textureId: textureImageInfo.textureId!),
+            child: Texture(textureId: textureId),
           ),
         ),
         width: widget.width,
@@ -186,7 +171,19 @@ class PowerTextureState extends State<PowerTextureImage>
     );
   }
 
-  int? _validDecodeDimension(int? value) {
-    return value != null && value > 0 ? value : null;
+  void _setUsesNativeTexture(bool value) {
+    if (_usesNativeTexture == value) {
+      return;
+    }
+    final bool wasNative = _usesNativeTexture;
+    _usesNativeTexture = value;
+    if (wasNative && !_usesNativeTexture) {
+      PowerImageLoader.instance.removeTextureVisibility(
+        widget.provider.options,
+        _visibilityOwner,
+      );
+    } else if (_usesNativeTexture) {
+      _updateAnimationState();
+    }
   }
 }

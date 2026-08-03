@@ -24,14 +24,23 @@ public class PowerImageRequestManager {
     private Map<String, PowerImageBaseRequest> requests;
     private final Map<String, Boolean> animationStates;
     private WeakReference<TextureRegistry> textureRegistryWrf;
+    private SurfaceProducerReleaseGate surfaceReleaseGate;
 
     public PowerImageRequestManager(PowerImageEngineContext context) {
         engineContext = context;
         requests = new HashMap<>();
         animationStates = new HashMap<>();
+        surfaceReleaseGate = new SurfaceProducerReleaseGate();
     }
 
     public void configWithTextureRegistry(TextureRegistry textureRegistry) {
+        TextureRegistry previous = textureRegistryWrf != null
+                ? textureRegistryWrf.get() : null;
+        if (previous != textureRegistry) {
+            // One gate belongs to one engine/TextureRegistry generation. An old
+            // engine release must never stall surfaces created by a new engine.
+            surfaceReleaseGate = new SurfaceProducerReleaseGate();
+        }
         this.textureRegistryWrf = new WeakReference<>(textureRegistry);
     }
 
@@ -59,7 +68,10 @@ public class PowerImageRequestManager {
                 TextureRegistry textureRegistry = textureRegistryWrf != null
                         ? textureRegistryWrf.get() : null;
                 request = new PowerImageTextureRequest(
-                        engineContext, arguments, textureRegistry);
+                        engineContext,
+                        arguments,
+                        textureRegistry,
+                        surfaceReleaseGate);
             } else {
                 Object requestIdValue = arguments.get("uniqueKey");
                 PowerImageDiagnostics.error(
@@ -151,6 +163,21 @@ public class PowerImageRequestManager {
         }
     }
 
+    /** Removes an encoded-file handoff immediately after its success event. */
+    public void releaseCompletedRequest(PowerImageBaseRequest completedRequest) {
+        if (completedRequest == null) {
+            return;
+        }
+        String requestId = completedRequest.requestId;
+        PowerImageBaseRequest current = requests.get(requestId);
+        if (current != completedRequest) {
+            return;
+        }
+        requests.remove(requestId);
+        animationStates.remove(requestId);
+        completedRequest.stopTask();
+    }
+
     public void releaseAllRequests() {
         for (PowerImageBaseRequest request : new ArrayList<>(requests.values())) {
             request.stopTask();
@@ -165,5 +192,9 @@ public class PowerImageRequestManager {
         }
         requests.clear();
         animationStates.clear();
+    }
+
+    SurfaceProducerReleaseGate surfaceReleaseGateForTesting() {
+        return surfaceReleaseGate;
     }
 }

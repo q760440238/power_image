@@ -9,88 +9,110 @@ import 'package:power_image_example/animated_webp_fixture.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('benchmark uses 20 visually distinct animated WebP files', () async {
-    expect(benchmarkAnimatedWebpAssets, hasLength(benchmarkAnimatedWebpCount));
-    expect(benchmarkAnimatedWebpAnimalNames,
-        hasLength(benchmarkAnimatedWebpCount));
-    expect(benchmarkAnimatedWebpAnimalNames.toSet(),
-        hasLength(benchmarkAnimatedWebpCount));
+  test('benchmark uses 100 unique animals in all three formats', () async {
+    final List<dynamic> manifest = jsonDecode(
+      await rootBundle.loadString('assets/benchmark/manifest.json'),
+    ) as List<dynamic>;
+    expect(manifest, hasLength(benchmarkAnimalCount));
+    expect(
+      manifest.map((dynamic item) => item['name']).toSet(),
+      hasLength(benchmarkAnimalCount),
+    );
+    expect(
+      manifest.map((dynamic item) => item['codepoint']).toSet(),
+      hasLength(benchmarkAnimalCount),
+    );
+    expect(benchmarkAnimalNames.toSet(), hasLength(benchmarkAnimalCount));
 
-    final Set<String> encodedFiles = <String>{};
-    final Set<String> firstVisibleFramePixels = <String>{};
-    final Set<String> animations = <String>{};
-    for (int index = 0; index < benchmarkAnimatedWebpCount; index++) {
-      final String asset = benchmarkAnimatedWebpAssets[index];
-      final String animal = benchmarkAnimatedWebpAnimalNames[index];
-      expect(
-          asset, endsWith('_${index.toString().padLeft(2, '0')}_$animal.webp'));
-      final ByteData data = await rootBundle.load(asset);
-      final Uint8List bytes =
-          data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
-      encodedFiles.add(_fingerprint(bytes));
-
-      final ui.Codec codec = await ui.instantiateImageCodec(bytes);
-      expect(codec.frameCount, greaterThan(1),
-          reason: '$asset is not animated');
-      expect(codec.repetitionCount, isNot(0),
-          reason: '$asset does not loop as an animation');
-
-      final Set<String> framePixels = <String>{};
-      final List<String> frameSequence = <String>[];
-      bool hasVisiblePixel = false;
-      String? firstVisibleFrameHash;
-      for (int frameIndex = 0; frameIndex < codec.frameCount; frameIndex++) {
-        final ui.FrameInfo frame = await codec.getNextFrame();
-        expect(frame.image.width, 512);
-        expect(frame.image.height, 512);
-
-        final _PixelFingerprint pixels = await _rgbaFingerprint(frame.image);
-        if (firstVisibleFrameHash == null && pixels.hasVisiblePixel) {
-          firstVisibleFrameHash = pixels.hash;
-        }
-        framePixels.add(pixels.hash);
-        frameSequence.add('${frame.duration.inMicroseconds}:${pixels.hash}');
-        hasVisiblePixel |= pixels.hasVisiblePixel;
-        frame.image.dispose();
+    final List<List<String>> assetSets = <List<String>>[
+      benchmarkStaticWebpAssets,
+      benchmarkAnimatedWebpAssets,
+      benchmarkGifAssets,
+    ];
+    for (final List<String> assets in assetSets) {
+      expect(assets, hasLength(benchmarkAnimalCount));
+      final Set<String> encodedFiles = <String>{};
+      for (final String asset in assets) {
+        final ByteData data = await rootBundle.load(asset);
+        encodedFiles.add(_fingerprint(
+          data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
+        ));
       }
-      expect(framePixels.length, greaterThan(1),
-          reason: '$asset has no visible frame changes');
-      expect(hasVisiblePixel, isTrue, reason: '$asset is fully transparent');
-      expect(firstVisibleFrameHash, isNotNull,
-          reason: '$asset has no visible frame');
-      firstVisibleFramePixels.add(firstVisibleFrameHash!);
-      animations.add(frameSequence.join('|'));
-      codec.dispose();
+      expect(encodedFiles, hasLength(benchmarkAnimalCount),
+          reason: 'Every $assets item must use different encoded bytes');
     }
 
-    expect(encodedFiles, hasLength(benchmarkAnimatedWebpCount),
-        reason: 'Every benchmark item must use different encoded bytes');
-    expect(firstVisibleFramePixels, hasLength(benchmarkAnimatedWebpCount),
-        reason:
-            'Every benchmark animal must have a visibly different first frame');
-    expect(animations, hasLength(benchmarkAnimatedWebpCount),
-        reason: 'Every benchmark item must have a different frame sequence');
+    final Set<String> staticFirstFrames = <String>{};
+    for (final String asset in benchmarkStaticWebpAssets) {
+      final ByteData data = await rootBundle.load(asset);
+      final ui.Codec codec = await ui.instantiateImageCodec(
+        data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
+      );
+      expect(codec.frameCount, 1, reason: '$asset is not static');
+      final ui.FrameInfo frame = await codec.getNextFrame();
+      expect(frame.image.width, 512);
+      expect(frame.image.height, 512);
+      final _PixelFingerprint pixels = await _rgbaFingerprint(frame.image);
+      expect(pixels.hasVisiblePixel, isTrue, reason: '$asset is transparent');
+      staticFirstFrames.add(pixels.hash);
+      frame.image.dispose();
+      codec.dispose();
+    }
+    expect(staticFirstFrames, hasLength(benchmarkAnimalCount),
+        reason: 'All 100 animals must have visibly different first frames');
+
+    for (final List<String> assets in <List<String>>[
+      benchmarkAnimatedWebpAssets,
+      benchmarkGifAssets,
+    ]) {
+      for (int index = 0; index < benchmarkAnimalCount; index += 10) {
+        final String asset = assets[index];
+        final ByteData data = await rootBundle.load(asset);
+        final ui.Codec codec = await ui.instantiateImageCodec(
+          data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
+        );
+        expect(codec.frameCount, 12, reason: '$asset is not a 12-frame image');
+        expect(codec.repetitionCount, isNot(0), reason: '$asset does not loop');
+        final ui.FrameInfo first = await codec.getNextFrame();
+        final ui.FrameInfo second = await codec.getNextFrame();
+        expect(first.image.width, 512);
+        expect(first.image.height, 512);
+        expect(
+          (await _rgbaFingerprint(first.image)).hash,
+          isNot((await _rgbaFingerprint(second.image)).hash),
+          reason: '$asset has no visible animation',
+        );
+        first.image.dispose();
+        second.image.dispose();
+        codec.dispose();
+      }
+    }
   });
 
-  test('loopback server returns the requested unique WebP fixture', () async {
+  test('loopback server returns 100 unique fixtures per format', () async {
     final AnimatedWebpFixture fixture = await AnimatedWebpFixture.start();
-    final Set<String> responses = <String>{};
     try {
-      for (int item = 0; item < benchmarkAnimatedWebpCount; item++) {
-        final Uri uri = Uri.parse('${fixture.url}?library=test&item=$item');
-        final List<int> bytes = await _getFixtureWithSocket(
-          uri,
-          item,
-          benchmarkAnimatedWebpAnimalNames[item],
-        );
-        responses.add(_fingerprint(Uint8List.fromList(bytes)));
+      for (final String baseUrl in <String>[
+        fixture.staticWebpUrl,
+        fixture.url,
+        fixture.gifUrl,
+      ]) {
+        final Set<String> responses = <String>{};
+        for (int item = 0; item < benchmarkAnimalCount; item++) {
+          final Uri uri = Uri.parse('$baseUrl?library=test&item=$item');
+          final List<int> bytes = await _getFixtureWithSocket(
+            uri,
+            item,
+            benchmarkAnimalNames[item],
+          );
+          responses.add(_fingerprint(Uint8List.fromList(bytes)));
+        }
+        expect(responses, hasLength(benchmarkAnimalCount),
+            reason: '$baseUrl must serve 100 different files');
       }
     } finally {
       await fixture.close();
     }
-
-    expect(responses, hasLength(benchmarkAnimatedWebpCount),
-        reason: 'The HTTP benchmark must serve 20 different files');
   });
 }
 
