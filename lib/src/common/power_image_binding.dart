@@ -1,12 +1,9 @@
-
-
 import 'package:flutter/widgets.dart';
-import 'package:power_image_ext/image_cache_ext.dart';
 
-class PowerImageBinding extends WidgetsFlutterBinding {
-  @override
-  ImageCache createImageCache() {
-    // TODO: implement createImageCache
-    return ImageCacheExt();
-  }
-}
+/// Backwards-compatible binding that now uses Flutter's standard [ImageCache].
+///
+/// PowerImage no longer requires applications to install a process-wide custom
+/// image cache. New applications can call [WidgetsFlutterBinding.ensureInitialized]
+/// directly and omit this class.
+@Deprecated('PowerImage no longer requires a custom binding.')
+class PowerImageBinding extends WidgetsFlutterBinding {}

@@ -1,3 +1,7 @@
+param(
+    [string]$Proxy = $env:HTTPS_PROXY
+)
+
 $ErrorActionPreference = 'Stop'
 
 $outputDirectory = [IO.Path]::GetFullPath(
@@ -7,59 +11,238 @@ $stagingDirectory = Join-Path ([IO.Path]::GetTempPath()) (
     'power_image_animals_' + [Guid]::NewGuid().ToString('N')
 )
 
-# Animated Noto Emoji by Google, licensed under CC BY 4.0.
-# https://googlefonts.github.io/noto-emoji-animation/
-# https://creativecommons.org/licenses/by/4.0/
+# Noto Color Emoji source images by Google, pinned for reproducibility.
+# https://github.com/googlefonts/noto-emoji
+$sourceRevision = '8998f5dd683424a73e2314a8c1f1e359c19e8742'
+$sourceCacheDirectory = Join-Path $PSScriptRoot (
+    "..\.dart_tool\power_image_benchmark_sources\$sourceRevision"
+)
 $animals = @(
-    @{ Name = 'dog';       Codepoint = '1f415'; Sha256 = '8b2bd2766283df6947ba79c03b1ae0c56ddb680db702b637622bb25a144d2600' },
-    @{ Name = 'cow';       Codepoint = '1f42e'; Sha256 = 'd0cd4709a91d7a615f325ffed43a51122e4ff4baeaea5029cb6e69418e59d619' },
-    @{ Name = 'unicorn';   Codepoint = '1f984'; Sha256 = '4b719fccb89c8cce8554f43a688fc884af37e3c12790e50af0a96ba84eeeaf6c' },
-    @{ Name = 'lizard';    Codepoint = '1f98e'; Sha256 = '13c08b13971d5f1b754dcf9e8876f2863a6dfab81410d5fe45dd5dc19206ed56' },
-    @{ Name = 'dragon';    Codepoint = '1f409'; Sha256 = 'ab867fdf3d7fce93a3be43a11ea8060129dfb0d97ccf8a23a9077f484d25f4bb' },
-    @{ Name = 'trex';      Codepoint = '1f996'; Sha256 = 'e7a199b0babec6d9ca82f20e2f93c8504ccf5a09718306be52f93ddad83b5a46' },
-    @{ Name = 'turtle';    Codepoint = '1f422'; Sha256 = '135eee69a2549622203004894c4b162e66d29a35092e15a5f9f657cc3091ef92' },
-    @{ Name = 'crocodile'; Codepoint = '1f40a'; Sha256 = '301e91cc621579b24d5cf39113be54b1a93669848153a411f900eb5da852cd2d' },
-    @{ Name = 'snake';     Codepoint = '1f40d'; Sha256 = '3d35540f43331d89f452d623e42c69c4d2ca4f41fde6185d1d2289ec55829a0b' },
-    @{ Name = 'frog';      Codepoint = '1f438'; Sha256 = '156e69b0e9cf571119b5f2fcdbe21c67f7d309f8d91882c34b249a721dfe4276' },
-    @{ Name = 'rabbit';    Codepoint = '1f407'; Sha256 = '97a573219abb21325c8c1e3c34fea614d2ce3e07c548241df0033ab5fd479db5' },
-    @{ Name = 'rat';       Codepoint = '1f400'; Sha256 = '4ca25f96d6d414f1c0d14fa537a97013b3ea77b05d6cd3fe1d82a4733ac69d2b' },
-    @{ Name = 'pig';       Codepoint = '1f416'; Sha256 = 'a842a605f42be60174ddda048779b66727320926eda26ce790b1837ff46cceb1' },
-    @{ Name = 'horse';     Codepoint = '1f40e'; Sha256 = '1227cf9c78aeda1ce89951cc4138ad92832ee5f5c83d82662fb506326b2d9d03' },
-    @{ Name = 'kangaroo';  Codepoint = '1f998'; Sha256 = 'b82b66b9ef80f0f9e8aef448ca9d1bbdd295ef854064d0a8a0e10e6054073819' },
-    @{ Name = 'gorilla';   Codepoint = '1f98d'; Sha256 = 'dd22a3d00e1d9eb782c0179016c7f881f7d4f050220f04737dba27ec160d9b4a' },
-    @{ Name = 'bird';      Codepoint = '1f426'; Sha256 = 'af7688566fe7f112fdcf09974ce7cf9c864b8182568d1930bbadc8f3628908d7' },
-    @{ Name = 'owl';       Codepoint = '1f989'; Sha256 = '358af913f5f247ae1ff82c16e81997b111aa7c588b10d5abd3e8a43ce8a9dcf7' },
-    @{ Name = 'dolphin';   Codepoint = '1f42c'; Sha256 = '505c42fb874a25715d1a2f6ec42889c99fed01fb42d2becc6def8deb7a2e859b' },
-    @{ Name = 'butterfly'; Codepoint = '1f98b'; Sha256 = '46d58db19d3ec3e3e714307933106064aac4318ced100b173be2d2f9ce8447fa' }
+    @{ Name = 'monkey_face';        Codepoint = '1f435' },
+    @{ Name = 'monkey';             Codepoint = '1f412' },
+    @{ Name = 'gorilla';            Codepoint = '1f98d' },
+    @{ Name = 'orangutan';          Codepoint = '1f9a7' },
+    @{ Name = 'dog_face';           Codepoint = '1f436' },
+    @{ Name = 'dog';                Codepoint = '1f415' },
+    @{ Name = 'guide_dog';          Codepoint = '1f9ae' },
+    @{ Name = 'service_dog';        Codepoint = '1f415_200d_1f9ba' },
+    @{ Name = 'poodle';             Codepoint = '1f429' },
+    @{ Name = 'wolf';               Codepoint = '1f43a' },
+    @{ Name = 'fox';                Codepoint = '1f98a' },
+    @{ Name = 'raccoon';            Codepoint = '1f99d' },
+    @{ Name = 'cat_face';           Codepoint = '1f431' },
+    @{ Name = 'cat';                Codepoint = '1f408' },
+    @{ Name = 'black_cat';          Codepoint = '1f408_200d_2b1b' },
+    @{ Name = 'lion';               Codepoint = '1f981' },
+    @{ Name = 'tiger_face';         Codepoint = '1f42f' },
+    @{ Name = 'tiger';              Codepoint = '1f405' },
+    @{ Name = 'leopard';            Codepoint = '1f406' },
+    @{ Name = 'horse_face';         Codepoint = '1f434' },
+    @{ Name = 'moose';              Codepoint = '1face' },
+    @{ Name = 'donkey';             Codepoint = '1facf' },
+    @{ Name = 'horse';              Codepoint = '1f40e' },
+    @{ Name = 'unicorn';            Codepoint = '1f984' },
+    @{ Name = 'zebra';              Codepoint = '1f993' },
+    @{ Name = 'deer';               Codepoint = '1f98c' },
+    @{ Name = 'bison';              Codepoint = '1f9ac' },
+    @{ Name = 'cow_face';           Codepoint = '1f42e' },
+    @{ Name = 'ox';                 Codepoint = '1f402' },
+    @{ Name = 'water_buffalo';      Codepoint = '1f403' },
+    @{ Name = 'cow';                Codepoint = '1f404' },
+    @{ Name = 'pig_face';           Codepoint = '1f437' },
+    @{ Name = 'pig';                Codepoint = '1f416' },
+    @{ Name = 'boar';               Codepoint = '1f417' },
+    @{ Name = 'pig_nose';           Codepoint = '1f43d' },
+    @{ Name = 'ram';                Codepoint = '1f40f' },
+    @{ Name = 'ewe';                Codepoint = '1f411' },
+    @{ Name = 'goat';               Codepoint = '1f410' },
+    @{ Name = 'camel';              Codepoint = '1f42a' },
+    @{ Name = 'two_hump_camel';     Codepoint = '1f42b' },
+    @{ Name = 'llama';              Codepoint = '1f999' },
+    @{ Name = 'giraffe';            Codepoint = '1f992' },
+    @{ Name = 'elephant';           Codepoint = '1f418' },
+    @{ Name = 'mammoth';            Codepoint = '1f9a3' },
+    @{ Name = 'rhinoceros';         Codepoint = '1f98f' },
+    @{ Name = 'hippopotamus';       Codepoint = '1f99b' },
+    @{ Name = 'mouse_face';         Codepoint = '1f42d' },
+    @{ Name = 'mouse';              Codepoint = '1f401' },
+    @{ Name = 'rat';                Codepoint = '1f400' },
+    @{ Name = 'hamster';            Codepoint = '1f439' },
+    @{ Name = 'rabbit_face';        Codepoint = '1f430' },
+    @{ Name = 'rabbit';             Codepoint = '1f407' },
+    @{ Name = 'chipmunk';           Codepoint = '1f43f' },
+    @{ Name = 'beaver';             Codepoint = '1f9ab' },
+    @{ Name = 'hedgehog';           Codepoint = '1f994' },
+    @{ Name = 'bat';                Codepoint = '1f987' },
+    @{ Name = 'bear';               Codepoint = '1f43b' },
+    @{ Name = 'polar_bear';         Codepoint = '1f43b_200d_2744' },
+    @{ Name = 'koala';              Codepoint = '1f428' },
+    @{ Name = 'panda';              Codepoint = '1f43c' },
+    @{ Name = 'sloth';              Codepoint = '1f9a5' },
+    @{ Name = 'otter';              Codepoint = '1f9a6' },
+    @{ Name = 'skunk';              Codepoint = '1f9a8' },
+    @{ Name = 'kangaroo';           Codepoint = '1f998' },
+    @{ Name = 'badger';             Codepoint = '1f9a1' },
+    @{ Name = 'turkey';             Codepoint = '1f983' },
+    @{ Name = 'chicken';            Codepoint = '1f414' },
+    @{ Name = 'rooster';            Codepoint = '1f413' },
+    @{ Name = 'hatching_chick';     Codepoint = '1f423' },
+    @{ Name = 'baby_chick';         Codepoint = '1f424' },
+    @{ Name = 'front_facing_chick'; Codepoint = '1f425' },
+    @{ Name = 'bird';               Codepoint = '1f426' },
+    @{ Name = 'penguin';            Codepoint = '1f427' },
+    @{ Name = 'dove';               Codepoint = '1f54a' },
+    @{ Name = 'eagle';              Codepoint = '1f985' },
+    @{ Name = 'duck';               Codepoint = '1f986' },
+    @{ Name = 'goose';              Codepoint = '1fabf' },
+    @{ Name = 'owl';                Codepoint = '1f989' },
+    @{ Name = 'flamingo';           Codepoint = '1f9a9' },
+    @{ Name = 'peacock';            Codepoint = '1f99a' },
+    @{ Name = 'parrot';             Codepoint = '1f99c' },
+    @{ Name = 'black_bird';         Codepoint = '1f426_200d_2b1b' },
+    @{ Name = 'phoenix';            Codepoint = '1f426_200d_1f525' },
+    @{ Name = 'frog';               Codepoint = '1f438' },
+    @{ Name = 'crocodile';          Codepoint = '1f40a' },
+    @{ Name = 'turtle';             Codepoint = '1f422' },
+    @{ Name = 'lizard';             Codepoint = '1f98e' },
+    @{ Name = 'snake';              Codepoint = '1f40d' },
+    @{ Name = 'dragon_face';        Codepoint = '1f432' },
+    @{ Name = 'dragon';             Codepoint = '1f409' },
+    @{ Name = 'sauropod';           Codepoint = '1f995' },
+    @{ Name = 'trex';               Codepoint = '1f996' },
+    @{ Name = 'spouting_whale';     Codepoint = '1f433' },
+    @{ Name = 'whale';              Codepoint = '1f40b' },
+    @{ Name = 'dolphin';            Codepoint = '1f42c' },
+    @{ Name = 'seal';               Codepoint = '1f9ad' },
+    @{ Name = 'fish';               Codepoint = '1f41f' },
+    @{ Name = 'tropical_fish';      Codepoint = '1f420' },
+    @{ Name = 'blowfish';           Codepoint = '1f421' },
+    @{ Name = 'shark';              Codepoint = '1f988' }
 )
 
-New-Item -ItemType Directory -Force -Path $outputDirectory | Out-Null
-New-Item -ItemType Directory -Path $stagingDirectory | Out-Null
+if ($animals.Count -ne 100) {
+    throw "Expected exactly 100 animals, found $($animals.Count)"
+}
+
+$ffmpeg = (Get-Command ffmpeg -ErrorAction Stop).Source
+$staticDirectory = Join-Path $stagingDirectory 'static_webp'
+$animatedWebpDirectory = Join-Path $stagingDirectory 'animated_webp'
+$gifDirectory = Join-Path $stagingDirectory 'gif'
+$directories = @(
+    $stagingDirectory,
+    $staticDirectory,
+    $animatedWebpDirectory,
+    $gifDirectory,
+    $sourceCacheDirectory
+)
+foreach ($directory in $directories) {
+    New-Item -ItemType Directory -Path $directory -Force | Out-Null
+}
+
+$animationFilter = "format=rgba,scale=420:420:force_original_aspect_ratio=decrease," +
+    "pad=512:552:(ow-iw)/2:(oh-ih)/2:color=0x00000000," +
+    "crop=512:512:0:20+20*sin(2*PI*n/12)"
+$manifest = @()
 
 try {
     for ($index = 0; $index -lt $animals.Count; $index++) {
         $animal = $animals[$index]
-        $fileName = 'animal_{0:D2}_{1}.webp' -f $index, $animal.Name
-        $downloadPath = Join-Path $stagingDirectory $fileName
-        $sourceUrl = 'https://fonts.gstatic.com/s/e/notoemoji/latest/{0}/512.webp' -f $animal.Codepoint
+        $stem = 'animal_{0:D3}' -f $index
+        $sourcePath = Join-Path $sourceCacheDirectory "$stem.png"
+        $staticPath = Join-Path $staticDirectory "$stem.webp"
+        $animatedWebpPath = Join-Path $animatedWebpDirectory "$stem.webp"
+        $gifPath = Join-Path $gifDirectory "$stem.gif"
+        $sourceUrl = "https://raw.githubusercontent.com/googlefonts/noto-emoji/" +
+            "$sourceRevision/png/512/emoji_u$($animal.Codepoint).png"
 
-        Invoke-WebRequest -UseBasicParsing -Uri $sourceUrl -OutFile $downloadPath
-
-        $actualHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $downloadPath).Hash.ToLowerInvariant()
-        if ($actualHash -ne $animal.Sha256) {
-            throw "SHA-256 mismatch for $fileName. Expected $($animal.Sha256), got $actualHash"
+        $curlArguments = @(
+            '--http1.1', '-L', '--fail', '--silent', '--show-error',
+            '--retry', '5', '--retry-all-errors', '--retry-delay', '1'
+        )
+        if ($Proxy) {
+            $curlArguments += @('--proxy', $Proxy)
         }
+        $curlArguments += @('--output', $sourcePath, $sourceUrl)
+        if (!(Test-Path -LiteralPath $sourcePath) -or
+            (Get-Item -LiteralPath $sourcePath).Length -eq 0) {
+            & curl.exe @curlArguments
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to download $($animal.Name) from $sourceUrl"
+            }
+        }
+
+        $staticArguments = @(
+            '-y', '-hide_banner', '-loglevel', 'error', '-i', $sourcePath,
+            '-c:v', 'libwebp', '-q:v', '80', '-frames:v', '1', $staticPath
+        )
+        & $ffmpeg @staticArguments
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to encode static WebP for $($animal.Name)"
+        }
+
+        $animatedWebpArguments = @(
+            '-y', '-hide_banner', '-loglevel', 'error', '-loop', '1',
+            '-framerate', '12', '-t', '1', '-i', $sourcePath,
+            '-vf', "$animationFilter,format=yuva420p",
+            '-c:v', 'libwebp_anim', '-q:v', '80', '-loop', '0', '-an',
+            $animatedWebpPath
+        )
+        & $ffmpeg @animatedWebpArguments
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to encode animated WebP for $($animal.Name)"
+        }
+
+        $gifFilter = "$animationFilter,split[a][b];" +
+            '[a]palettegen=reserve_transparent=on:stats_mode=diff[p];' +
+            '[b][p]paletteuse=alpha_threshold=128'
+        $gifArguments = @(
+            '-y', '-hide_banner', '-loglevel', 'error', '-loop', '1',
+            '-framerate', '12', '-t', '1', '-i', $sourcePath,
+            '-filter_complex', $gifFilter, '-loop', '0', $gifPath
+        )
+        & $ffmpeg @gifArguments
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to encode GIF for $($animal.Name)"
+        }
+
+        $manifest += [ordered]@{
+            index = $index
+            name = $animal.Name
+            codepoint = $animal.Codepoint
+            source_revision = $sourceRevision
+            source_sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $sourcePath).Hash.ToLowerInvariant()
+            static_webp_sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $staticPath).Hash.ToLowerInvariant()
+            animated_webp_sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $animatedWebpPath).Hash.ToLowerInvariant()
+            gif_sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $gifPath).Hash.ToLowerInvariant()
+        }
+
+        Write-Progress -Activity 'Generating 100 animal fixtures' `
+            -Status "$($index + 1)/$($animals.Count) $($animal.Name)" `
+            -PercentComplete ((($index + 1) / $animals.Count) * 100)
     }
 
-    Get-ChildItem -LiteralPath $outputDirectory -File |
-        Where-Object { $_.Name -like 'animated_*.webp' -or $_.Name -like 'animal_*.webp' } |
-        Remove-Item -Force
+    $manifest | ConvertTo-Json -Depth 4 | Set-Content `
+        -LiteralPath (Join-Path $stagingDirectory 'manifest.json') -Encoding utf8
 
-    Copy-Item -Path (Join-Path $stagingDirectory '*.webp') -Destination $outputDirectory
+    New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
+    foreach ($generatedName in @(
+        'static_webp', 'animated_webp', 'gif', 'manifest.json'
+    )) {
+        $generatedPath = Join-Path $outputDirectory $generatedName
+        if (Test-Path -LiteralPath $generatedPath) {
+            Remove-Item -LiteralPath $generatedPath -Recurse -Force
+        }
+    }
+    Copy-Item -LiteralPath $staticDirectory -Destination $outputDirectory -Recurse
+    Copy-Item -LiteralPath $animatedWebpDirectory -Destination $outputDirectory -Recurse
+    Copy-Item -LiteralPath $gifDirectory -Destination $outputDirectory -Recurse
+    Copy-Item -LiteralPath (Join-Path $stagingDirectory 'manifest.json') `
+        -Destination $outputDirectory
 } finally {
+    Write-Progress -Activity 'Generating 100 animal fixtures' -Completed
     if (Test-Path -LiteralPath $stagingDirectory) {
         Remove-Item -LiteralPath $stagingDirectory -Recurse -Force
     }
 }
 
-Write-Output "Downloaded and verified $($animals.Count) distinct animated animal WebP fixtures in $outputDirectory"
+Write-Output "Generated 100 unique animals in static WebP, animated WebP and GIF formats."

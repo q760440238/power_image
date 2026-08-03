@@ -1,0 +1,199 @@
+{
+    "context": {
+        "build": {
+            "brand": "HUAWEI",
+            "device": "HWVOG",
+            "fingerprint": "HUAWEI/VOG-AL10/HWVOG:10/HUAWEIVOG-AL10/10.1.0.162C00:user/release-keys",
+            "id": "HUAWEIVOG-AL10",
+            "model": "VOG-AL10",
+            "type": "user",
+            "version": {
+                "codename": "REL",
+                "sdk": 29
+            }
+        },
+        "cpuCoreCount": 8,
+        "cpuLocked": true,
+        "cpuMaxFreqHz": 2600000000,
+        "memTotalBytes": 7975907328,
+        "sustainedPerformanceModeEnabled": false,
+        "artMainlineVersion": -1,
+        "osCodenameAbbreviated": "H",
+        "compilationMode": "unknown",
+        "payload": {}
+    },
+    "benchmarks": [
+        {
+            "name": "flutterImageCacheHit",
+            "params": {},
+            "className": "com.taobao.power_image_example.macrobenchmark.CacheLifecycleBenchmark",
+            "totalRunTimeNs": 49432032805,
+            "metrics": {
+                "memoryHeapSizeMaxKb": {
+                    "minimum": 1670.0,
+                    "maximum": 1704.0,
+                    "median": 1671.0,
+                    "coefficientOfVariation": 0.006256939393786155,
+                    "runs": [
+                        1704.0,
+                        1671.0,
+                        1671.0,
+                        1671.0,
+                        1671.0,
+                        1671.0,
+                        1671.0,
+                        1671.0,
+                        1671.0,
+                        1670.0
+                    ]
+                },
+                "memoryRssAnonMaxKb": {
+                    "minimum": 44156.0,
+                    "maximum": 50176.0,
+                    "median": 48376.0,
+                    "coefficientOfVariation": 0.036119030833009894,
+                    "runs": [
+                        50176.0,
+                        47616.0,
+                        49612.0,
+                        49780.0,
+                        48248.0,
+                        49908.0,
+                        48180.0,
+                        48180.0,
+                        44156.0,
+                        48504.0
+                    ]
+                },
+                "memoryRssFileMaxKb": {
+                    "minimum": 104964.0,
+                    "maximum": 181892.0,
+                    "median": 180628.0,
+                    "coefficientOfVariation": 0.13852540381655626,
+                    "runs": [
+                        104964.0,
+                        181432.0,
+                        181040.0,
+                        180196.0,
+                        180336.0,
+                        181892.0,
+                        180136.0,
+                        180440.0,
+                        181220.0,
+                        180816.0
+                    ]
+                },
+                "operationCountCount": {
+                    "minimum": 1.0,
+                    "maximum": 1.0,
+                    "median": 1.0,
+                    "coefficientOfVariation": 0.0,
+                    "runs": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                "operationMaxMsMaxMs": {
+                    "minimum": 9.090104,
+                    "maximum": 22.868229,
+                    "median": 15.878125,
+                    "coefficientOfVariation": 0.2293164148114701,
+                    "runs": [
+                        18.357292,
+                        17.795312,
+                        14.441667,
+                        9.090104,
+                        13.160417,
+                        17.75625,
+                        22.868229,
+                        15.628646,
+                        16.127604,
+                        14.270312
+                    ]
+                },
+                "operationMsAverageMs": {
+                    "minimum": 9.090104,
+                    "maximum": 22.868229,
+                    "median": 15.878125,
+                    "coefficientOfVariation": 0.2293164148114701,
+                    "runs": [
+                        18.357292,
+                        17.795312,
+                        14.441667,
+                        9.090104,
+                        13.160417,
+                        17.75625,
+                        22.868229,
+                        15.628646,
+                        16.127604,
+                        14.270312
+                    ]
+                }
+            },
+            "sampledMetrics": {},
+            "warmupIterations": 0,
+            "repeatIterations": 10,
+            "thermalThrottleSleepSeconds": 0,
+            "profilerOutputs": [
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 0",
+                    "filename": "CacheLifecycleBenchmark_flutterImageCacheHit_iter000_2026-08-03-13-14-33.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 1",
+                    "filename": "CacheLifecycleBenchmark_flutterImageCacheHit_iter001_2026-08-03-13-14-36.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 2",
+                    "filename": "CacheLifecycleBenchmark_flutterImageCacheHit_iter002_2026-08-03-13-14-40.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 3",
+                    "filename": "CacheLifecycleBenchmark_flutterImageCacheHit_iter003_2026-08-03-13-14-43.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 4",
+                    "filename": "CacheLifecycleBenchmark_flutterImageCacheHit_iter004_2026-08-03-13-14-46.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 5",
+                    "filename": "CacheLifecycleBenchmark_flutterImageCacheHit_iter005_2026-08-03-13-14-50.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 6",
+                    "filename": "CacheLifecycleBenchmark_flutterImageCacheHit_iter006_2026-08-03-13-14-53.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 7",
+                    "filename": "CacheLifecycleBenchmark_flutterImageCacheHit_iter007_2026-08-03-13-14-57.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 8",
+                    "filename": "CacheLifecycleBenchmark_flutterImageCacheHit_iter008_2026-08-03-13-15-01.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 9",
+                    "filename": "CacheLifecycleBenchmark_flutterImageCacheHit_iter009_2026-08-03-13-15-04.perfetto-trace"
+                }
+            ]
+        }
+    ]
+}

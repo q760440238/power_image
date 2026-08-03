@@ -12,19 +12,14 @@ import 'examples/image_cache_status.dart';
 
 void main() {
   runZonedGuarded(() async {
+    FlutterError.onError = (FlutterErrorDetails details) {};
 
-    FlutterError.onError = (FlutterErrorDetails details) {
-
-    };
-
-    PowerImageBinding();
+    WidgetsFlutterBinding.ensureInitialized();
     PowerImageLoader.instance.setup(PowerImageSetupOptions(renderingTypeTexture,
         errorCallbackSamplingRate: null,
         errorCallback: (PowerImageLoadException exception) {}));
     runApp(const MyApp());
-  }, (error, stackTrace) async {
-
-  });
+  }, (error, stackTrace) async {});
 }
 
 class MyApp extends StatelessWidget {
@@ -63,9 +58,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     WidgetsBinding.instance!.addPostFrameCallback((_) {
-      DragOverlay.show(
-          context: context,
-          view: const ImageCacheStatusWidget());
+      DragOverlay.show(context: context, view: const ImageCacheStatusWidget());
     });
     super.initState();
   }
@@ -110,17 +103,18 @@ class _MyHomePageState extends State<MyHomePage> {
           },
         ),
         ListTile(
-          title: const Text('gallery'),
-          onTap: () async {
-            ImagePicker picker = ImagePicker();
-            var image = await picker.pickImage(source: ImageSource.gallery);
-            if (image != null) {
-              Navigator.push(context, MaterialPageRoute(builder: (context) {
-                return ExampleGalleryPrev(path: image.path,);
-              }));
-            }
-          }
-        )
+            title: const Text('gallery'),
+            onTap: () async {
+              ImagePicker picker = ImagePicker();
+              var image = await picker.pickImage(source: ImageSource.gallery);
+              if (image != null) {
+                Navigator.push(context, MaterialPageRoute(builder: (context) {
+                  return ExampleGalleryPrev(
+                    path: image.path,
+                  );
+                }));
+              }
+            })
       ]),
     );
   }

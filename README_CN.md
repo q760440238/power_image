@@ -57,27 +57,15 @@ dependency_overrides:
 
 ### Flutter
 
-#### 1. 用 `ImageCacheExt`替换 `ImageCache` .
+#### 1. 使用 Flutter 标准 Binding 和图片缓存
+
+PowerImage 不再依赖全局 `PowerImageBinding` 或 `ImageCacheExt`。原生纹理资源由
+对应的 stream completer 管理，并在最后一个监听者移除时释放。应用只需使用
+Flutter 标准 Binding：
 
 ```dart
-/// call before runApp()
-PowerImageBinding();
+WidgetsFlutterBinding.ensureInitialized();
 ```
-
-or
-
-```dart
-/// return ImageCacheExt in createImageCache(), 
-/// if you have extends with WidgetsFlutterBinding
-class XXX extends WidgetsFlutterBinding {
-  @override
-  ImageCache createImageCache() {
-    return ImageCacheExt();
-  }
-}
-```
-
-
 
 #### 2. 初始化 PowerImageLoader
 

@@ -1,110 +1,216 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:power_image/src/common/power_image_provider.dart';
 import 'package:power_image/src/options/power_image_request_options.dart';
 import 'package:power_image_ext/image_info_ext.dart';
+
 import '../../power_image.dart';
 
 class PowerTextureImageProvider extends PowerImageProvider {
   PowerTextureImageProvider(PowerImageRequestOptions options) : super(options);
 
   @override
-  FutureOr<ImageInfo> createImageInfo(Map map) {
-    final int? textureId = map['textureId'];
-    final int? width = map['width'];
-    final int? height = map['height'];
-    final Object? encodedData = map['encodedData'];
-    final Object? encodedFilePath = map['encodedFilePath'];
-    if (map['renderingBackend'] == 'flutterCodec' &&
-        ((encodedData is Uint8List && encodedData.isNotEmpty) ||
-            (encodedFilePath is String && encodedFilePath.isNotEmpty))) {
-      return PowerFlutterCodecImageInfo.create(
-        encodedData: encodedData is Uint8List ? encodedData : null,
-        encodedFilePath: encodedFilePath is String ? encodedFilePath : null,
-        width: width,
-        height: height,
-        targetWidth: map['targetWidth'],
-        targetHeight: map['targetHeight'],
-      );
+  ImageStreamCompleter loadImage(
+    PowerImageProvider key,
+    ImageDecoderCallback decode,
+  ) {
+    bool requestReleased = false;
+
+    void releaseRequest() {
+      if (requestReleased) {
+        return;
+      }
+      requestReleased = true;
+      PowerImageLoader.instance.releaseImageRequest(options);
+      scheduleMicrotask(() {
+        PaintingBinding.instance.imageCache.evict(key);
+      });
     }
-    return PowerTextureImageInfo.create(
-      textureId: textureId,
-      width: width,
-      height: height,
+
+    late final _PowerTextureImageStreamCompleter completer;
+    completer = _PowerTextureImageStreamCompleter(
+      result: loadNativeResult(key),
+      decode: decode,
+      createNativeImageInfo: createImageInfo,
+      releaseRequest: releaseRequest,
     );
+    return completer;
   }
 
   @override
-  void dispose() {
-    PowerImageLoader.instance.releaseImageRequest(options);
-    super.dispose();
+  FutureOr<ImageInfo> createImageInfo(Map map) {
+    return PowerTextureImageInfo.create(
+      textureId: map['textureId'],
+      width: map['width'],
+      height: map['height'],
+    );
   }
 }
 
-/// Metadata used when Android delegates animated decoding to Flutter instead
-/// of allocating one SurfaceProducer/ImageReader per image.
-class PowerFlutterCodecImageInfo extends PowerTextureImageInfo {
-  PowerFlutterCodecImageInfo({
-    this.encodedData,
-    this.encodedFilePath,
-    required super.image,
-    super.width,
-    super.height,
-    this.targetWidth,
-    this.targetHeight,
-    super.scale,
-    super.debugLabel,
-  }) : assert(encodedData != null || encodedFilePath != null);
+/// Switches between a real native texture image and a real Flutter codec
+/// without publishing placeholder metadata or resolving a nested provider.
+class _PowerTextureImageStreamCompleter extends ImageStreamCompleter {
+  _PowerTextureImageStreamCompleter({
+    required Future<Map> result,
+    required ImageDecoderCallback decode,
+    required FutureOr<ImageInfo> Function(Map map) createNativeImageInfo,
+    required this.releaseRequest,
+  }) {
+    _load(result, decode, createNativeImageInfo);
+  }
 
-  final Uint8List? encodedData;
-  final String? encodedFilePath;
-  final int? targetWidth;
-  final int? targetHeight;
+  final VoidCallback releaseRequest;
+  ImageStreamCompleter? _codecCompleter;
+  ImageStreamListener? _codecListener;
+  int _listenerCount = 0;
+  bool _codecListenerAttached = false;
+  bool _nativeReleaseBound = false;
 
-  @override
-  int get sizeBytes => encodedData?.lengthInBytes ?? 0;
+  Future<void> _load(
+    Future<Map> result,
+    ImageDecoderCallback decode,
+    FutureOr<ImageInfo> Function(Map map) createNativeImageInfo,
+  ) async {
+    try {
+      final Map map = await result;
+      if (_isFlutterCodecResult(map)) {
+        _codecCompleter = MultiFrameImageStreamCompleter(
+          codec: _createCodec(map, decode),
+          scale: 1.0,
+          debugLabel: 'power_image_flutter_codec',
+        );
+        _codecListener = ImageStreamListener(
+          (ImageInfo image, bool synchronousCall) {
+            setImage(image.clone());
+          },
+          onChunk: reportImageChunkEvent,
+          onError: (Object exception, StackTrace? stackTrace) {
+            reportError(
+              context: ErrorDescription('decoding a PowerImage encoded image'),
+              exception: exception,
+              stack: stackTrace,
+              silent: true,
+            );
+          },
+        );
+        _attachCodecListener();
+        return;
+      }
 
-  @override
-  ImageInfo clone() {
-    return PowerFlutterCodecImageInfo(
-      encodedData: encodedData,
-      encodedFilePath: encodedFilePath,
-      image: image.clone(),
-      width: width,
-      height: height,
-      targetWidth: targetWidth,
-      targetHeight: targetHeight,
-      scale: scale,
-      debugLabel: debugLabel,
+      _bindNativeRelease();
+      setImage(await createNativeImageInfo(map));
+    } catch (exception, stackTrace) {
+      releaseRequest();
+      reportError(
+        context: ErrorDescription('loading a PowerImage texture'),
+        exception: exception,
+        stack: stackTrace,
+        silent: true,
+      );
+    }
+  }
+
+  void _bindNativeRelease() {
+    if (_nativeReleaseBound) {
+      return;
+    }
+    _nativeReleaseBound = true;
+    if (!hasListeners) {
+      scheduleMicrotask(_releaseWhenUnused);
+      return;
+    }
+    addOnLastListenerRemovedCallback(releaseRequest);
+  }
+
+  void _releaseWhenUnused() {
+    if (hasListeners) {
+      addOnLastListenerRemovedCallback(releaseRequest);
+    } else {
+      releaseRequest();
+    }
+  }
+
+  static bool _isFlutterCodecResult(Map map) {
+    if (map['renderingBackend'] != 'flutterCodec') {
+      return false;
+    }
+    final Object? data = map['encodedData'];
+    final Object? filePath = map['encodedFilePath'];
+    return (data is Uint8List && data.isNotEmpty) ||
+        (filePath is String && filePath.isNotEmpty);
+  }
+
+  static Future<ui.Codec> _createCodec(
+    Map map,
+    ImageDecoderCallback decode,
+  ) async {
+    final Object? data = map['encodedData'];
+    final ui.ImmutableBuffer buffer;
+    if (data is Uint8List && data.isNotEmpty) {
+      buffer = await ui.ImmutableBuffer.fromUint8List(data);
+    } else {
+      buffer = await ui.ImmutableBuffer.fromFilePath(
+        map['encodedFilePath'] as String,
+      );
+    }
+
+    final int? targetWidth = _validDimension(map['targetWidth']);
+    final int? targetHeight = _validDimension(map['targetHeight']);
+    return decode(
+      buffer,
+      getTargetSize: targetWidth == null && targetHeight == null
+          ? null
+          : (int intrinsicWidth, int intrinsicHeight) => ui.TargetImageSize(
+                width: targetWidth,
+                height: targetHeight,
+              ),
     );
   }
 
-  static FutureOr<PowerFlutterCodecImageInfo> create({
-    Uint8List? encodedData,
-    String? encodedFilePath,
-    int? width,
-    int? height,
-    int? targetWidth,
-    int? targetHeight,
-  }) async {
-    assert(encodedData != null || encodedFilePath != null);
-    final PowerTextureImageInfo placeholder =
-        await PowerTextureImageInfo.create(
-          textureId: null,
-          width: width,
-          height: height,
-        );
-    return PowerFlutterCodecImageInfo(
-      encodedData: encodedData,
-      encodedFilePath: encodedFilePath,
-      image: placeholder.image,
-      width: width,
-      height: height,
-      targetWidth: targetWidth,
-      targetHeight: targetHeight,
-      debugLabel: 'power_image_flutter_codec',
-    );
+  static int? _validDimension(Object? value) {
+    return value is int && value > 0 ? value : null;
+  }
+
+  @override
+  void addListener(ImageStreamListener listener) {
+    _listenerCount += 1;
+    super.addListener(listener);
+    _attachCodecListener();
+  }
+
+  @override
+  void removeListener(ImageStreamListener listener) {
+    super.removeListener(listener);
+    if (_listenerCount > 0) {
+      _listenerCount -= 1;
+    }
+    if (_listenerCount == 0) {
+      _detachCodecListener();
+    }
+  }
+
+  void _attachCodecListener() {
+    final ImageStreamCompleter? codecCompleter = _codecCompleter;
+    final ImageStreamListener? codecListener = _codecListener;
+    if (_listenerCount == 0 ||
+        _codecListenerAttached ||
+        codecCompleter == null ||
+        codecListener == null) {
+      return;
+    }
+    codecCompleter.addListener(codecListener);
+    _codecListenerAttached = true;
+  }
+
+  void _detachCodecListener() {
+    if (!_codecListenerAttached) {
+      return;
+    }
+    _codecCompleter!.removeListener(_codecListener!);
+    _codecListenerAttached = false;
   }
 }

@@ -31,8 +31,8 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
     private static final int ESTIMATED_SURFACE_BUFFER_COUNT = 3;
     private static final AtomicInteger ACTIVE_SURFACE_PRODUCERS = new AtomicInteger();
     private static final AtomicLong ESTIMATED_SURFACE_BYTES = new AtomicLong();
-
     private final WeakReference<TextureRegistry> textureRegistryWrf;
+    private final SurfaceProducerReleaseGate surfaceReleaseGate;
     private final AtomicBoolean loadSuccessSent = new AtomicBoolean(false);
     private final AtomicBoolean surfaceProducerTracked = new AtomicBoolean(false);
     private final int requestedWidth;
@@ -50,9 +50,14 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
     private int bitmapHeight;
     private long estimatedProducerBytes;
 
-    public PowerImageTextureRequest(PowerImageEngineContext context, Map<String, Object> arguments, TextureRegistry textureRegistry) {
+    public PowerImageTextureRequest(
+            PowerImageEngineContext context,
+            Map<String, Object> arguments,
+            TextureRegistry textureRegistry,
+            SurfaceProducerReleaseGate surfaceReleaseGate) {
         super(context, arguments);
         textureRegistryWrf = new WeakReference<>(textureRegistry);
+        this.surfaceReleaseGate = surfaceReleaseGate;
         PowerImageRequestConfig config = getImageRequestConfig();
         requestedWidth = config != null ? config.width : 0;
         requestedHeight = config != null ? config.height : 0;
@@ -99,23 +104,28 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
         PowerImageDispatcher.getInstance().runOnMainThread(new Runnable() {
             @Override
             public void run() {
-                TextureRegistry textureRegistry = textureRegistryWrf.get();
-                if (textureEntry == null && textureRegistry != null) {
-                    // 纹理创建，需要运行在有Looper的线程
-                    textureEntry = createSurfaceProducer(textureRegistry);
-                    surfaceAvailable = true;
-                    textureEntry.setCallback(PowerImageTextureRequest.this);
-                    trackSurfaceProducer(result.image.getFrameCount());
-                }
-                if (textureEntry == null) {
-                    onLoadFailed(TAG + ":onLoadResult SurfaceTextureEntry create failed");
-                    return;
-                }
-                if (stopped) {
-                    return;
-                }
-                // 切到子线程进行图片加载和纹理绘制
-                performDraw(result.image);
+                surfaceReleaseGate.runWhenIdle(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (stopped || isRequestReleased()) {
+                            return;
+                        }
+                        TextureRegistry textureRegistry = textureRegistryWrf.get();
+                        if (textureEntry == null && textureRegistry != null) {
+                            // 纹理创建，需要运行在有Looper的线程
+                            textureEntry = createSurfaceProducer(textureRegistry);
+                            surfaceAvailable = true;
+                            textureEntry.setCallback(PowerImageTextureRequest.this);
+                            trackSurfaceProducer(result.image.getFrameCount());
+                        }
+                        if (textureEntry == null) {
+                            onLoadFailed(TAG + ":onLoadResult SurfaceTextureEntry create failed");
+                            return;
+                        }
+                        // 切到子线程进行图片加载和纹理绘制
+                        performDraw(result.image);
+                    }
+                });
             }
         });
 
@@ -124,6 +134,11 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
     @Override
     public boolean stopTask() {
         return stopTask(false);
+    }
+
+    @Override
+    protected boolean releaseAfterSuccessfulDelivery() {
+        return flutterCodecBackend;
     }
 
     @Override
@@ -141,6 +156,9 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
         }
         imageTaskState = REQUEST_STATE_RELEASE_SUCCEED;
         textureRegistryWrf.clear();
+        final SurfaceProducerReleaseGate.Release producerRelease =
+                textureEntry != null && !engineDetaching
+                        ? surfaceReleaseGate.beginRelease() : null;
 
         Runnable runnable = new Runnable() {
             @Override
@@ -169,7 +187,7 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
                             @Override
                             public void run() {
                                 if (!engineDetaching) {
-                                    releaseSurfaceProducer(entry);
+                                    releaseSurfaceProducer(entry, producerRelease);
                                 }
                                 releaseLoadHandle();
                                 PowerImageDiagnostics.debug(
@@ -184,7 +202,7 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
                     if (realResult != null && realResult.image != null) {
                         realResult.image.onSurfaceCleanup();
                     }
-                    releaseSurfaceProducer(entry);
+                    releaseSurfaceProducer(entry, producerRelease);
                 }
                 if (realResult != null && realResult.image != null) {
                     realResult.image.release(finishRelease);
@@ -198,8 +216,13 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
         return true;
     }
 
-    private void releaseSurfaceProducer(TextureRegistry.SurfaceProducer entry) {
+    private void releaseSurfaceProducer(
+            TextureRegistry.SurfaceProducer entry,
+            SurfaceProducerReleaseGate.Release producerRelease) {
         if (entry == null) {
+            if (producerRelease != null) {
+                producerRelease.complete();
+            }
             return;
         }
         try {
@@ -209,6 +232,9 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
                     "surface_producer_release_failed", requestId, null, error);
         } finally {
             untrackSurfaceProducer();
+            if (producerRelease != null) {
+                producerRelease.complete();
+            }
         }
     }
 
@@ -321,6 +347,17 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
     public void onSurfaceCleanup() {
         surfaceAvailable = false;
         PowerImageDiagnostics.debug("surface_cleanup", requestId, null);
+        TextureRegistry.SurfaceProducer entry = textureEntry;
+        if (entry != null) {
+            synchronized (entry) {
+                cleanupImageSurface();
+            }
+        } else {
+            cleanupImageSurface();
+        }
+    }
+
+    private void cleanupImageSurface() {
         PowerImageResult result = realResult;
         if (result != null && result.image != null) {
             result.image.onSurfaceCleanup();

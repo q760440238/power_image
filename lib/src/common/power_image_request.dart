@@ -7,6 +7,7 @@ class PowerImageRequest {
         imageHeight = options.imageHeight,
         imageType = options.imageType,
         renderingType = options.renderingType,
+        networkBackend = options.networkBackend,
         src = options.src;
 
   /// need use string params to native, avoid setting object in map,
@@ -14,6 +15,7 @@ class PowerImageRequest {
   final PowerImageRequestOptionsSrc src;
   final String imageType;
   final String? renderingType;
+  final PowerImageNetworkBackend networkBackend;
   final double? imageWidth;
   final double? imageHeight;
   Map<String, dynamic>? _encodedRequest;
@@ -26,6 +28,7 @@ class PowerImageRequest {
       'height': imageHeight,
       'imageType': imageType,
       'renderingType': renderingType,
+      'networkBackend': networkBackend.name,
       'uniqueKey': uniqueKey()
     };
 
@@ -34,7 +37,7 @@ class PowerImageRequest {
 
   String? uniqueKey() {
     _uniqueKey ??=
-        '${src.encode().toString()}_imageType:${imageType}_imageWidth:${imageWidth}_imageHeight:${imageHeight}_renderingType:$renderingType'; //TODO 修改
+        '${src.encode().toString()}_imageType:${imageType}_imageWidth:${imageWidth}_imageHeight:${imageHeight}_renderingType:${renderingType}_networkBackend:${networkBackend.name}'; //TODO 修改
     return _uniqueKey;
   }
 }

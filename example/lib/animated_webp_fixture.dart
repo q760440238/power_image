@@ -1,103 +1,160 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
 
-const int benchmarkAnimatedWebpCount = 20;
+const int benchmarkAnimalCount = 100;
 
-const List<String> benchmarkAnimatedWebpAnimalNames = <String>[
-  'dog',
-  'cow',
-  'unicorn',
-  'lizard',
-  'dragon',
-  'trex',
-  'turtle',
-  'crocodile',
-  'snake',
-  'frog',
-  'rabbit',
-  'rat',
-  'pig',
-  'horse',
-  'kangaroo',
-  'gorilla',
-  'bird',
-  'owl',
-  'dolphin',
-  'butterfly',
-];
+final List<String> benchmarkAnimalNames = List<String>.generate(
+  benchmarkAnimalCount,
+  (int index) => 'animal_${index.toString().padLeft(3, '0')}',
+  growable: false,
+);
 
-const List<String> benchmarkAnimatedWebpAssets = <String>[
-  'assets/benchmark/animal_00_dog.webp',
-  'assets/benchmark/animal_01_cow.webp',
-  'assets/benchmark/animal_02_unicorn.webp',
-  'assets/benchmark/animal_03_lizard.webp',
-  'assets/benchmark/animal_04_dragon.webp',
-  'assets/benchmark/animal_05_trex.webp',
-  'assets/benchmark/animal_06_turtle.webp',
-  'assets/benchmark/animal_07_crocodile.webp',
-  'assets/benchmark/animal_08_snake.webp',
-  'assets/benchmark/animal_09_frog.webp',
-  'assets/benchmark/animal_10_rabbit.webp',
-  'assets/benchmark/animal_11_rat.webp',
-  'assets/benchmark/animal_12_pig.webp',
-  'assets/benchmark/animal_13_horse.webp',
-  'assets/benchmark/animal_14_kangaroo.webp',
-  'assets/benchmark/animal_15_gorilla.webp',
-  'assets/benchmark/animal_16_bird.webp',
-  'assets/benchmark/animal_17_owl.webp',
-  'assets/benchmark/animal_18_dolphin.webp',
-  'assets/benchmark/animal_19_butterfly.webp',
-];
+final List<String> benchmarkStaticWebpAssets = _benchmarkAssets(
+  directory: 'static_webp',
+  extension: 'webp',
+);
+final List<String> benchmarkAnimatedWebpAssets = _benchmarkAssets(
+  directory: 'animated_webp',
+  extension: 'webp',
+);
+final List<String> benchmarkGifAssets = _benchmarkAssets(
+  directory: 'gif',
+  extension: 'gif',
+);
+
+List<String> _benchmarkAssets({
+  required String directory,
+  required String extension,
+}) {
+  return List<String>.generate(
+    benchmarkAnimalCount,
+    (int index) => 'assets/benchmark/$directory/'
+        'animal_${index.toString().padLeft(3, '0')}.$extension',
+    growable: false,
+  );
+}
 
 class AnimatedWebpFixture {
-  AnimatedWebpFixture._(this._server, this._images);
+  AnimatedWebpFixture._(
+    this._server,
+    this._staticAnimalWebps,
+    this._animatedAnimalWebps,
+    this._animalGifs,
+    this._png,
+  );
 
   final HttpServer _server;
-  final List<Uint8List> _images;
+  final List<Uint8List> _staticAnimalWebps;
+  final List<Uint8List> _animatedAnimalWebps;
+  final List<Uint8List> _animalGifs;
+  final Uint8List _png;
 
-  String get url => 'http://127.0.0.1:${_server.port}/animated.webp';
+  String get url => 'http://127.0.0.1:${_server.port}/animals/animated.webp';
+  String get pngUrl => 'http://127.0.0.1:${_server.port}/static.png';
+  String get gifUrl => 'http://127.0.0.1:${_server.port}/animals/animated.gif';
+  String get staticWebpUrl =>
+      'http://127.0.0.1:${_server.port}/animals/static.webp';
 
   static Future<AnimatedWebpFixture> start() async {
-    if (benchmarkAnimatedWebpAssets.length != benchmarkAnimatedWebpCount ||
-        benchmarkAnimatedWebpAnimalNames.length != benchmarkAnimatedWebpCount) {
-      throw StateError('The benchmark requires exactly 20 WebP fixtures.');
+    final List<List<String>> assetSets = <List<String>>[
+      benchmarkStaticWebpAssets,
+      benchmarkAnimatedWebpAssets,
+      benchmarkGifAssets,
+    ];
+    if (benchmarkAnimalNames.length != benchmarkAnimalCount ||
+        assetSets.any(
+            (List<String> assets) => assets.length != benchmarkAnimalCount)) {
+      throw StateError(
+          'The benchmark requires exactly 100 fixtures per format.');
     }
-    final List<Uint8List> images = await Future.wait(
-      benchmarkAnimatedWebpAssets.map((String asset) async {
+    final List<List<Uint8List>> images = await Future.wait(
+      assetSets.map(_loadAssets),
+    );
+    final ByteData pngData =
+        await rootBundle.load('assets/images/flutter_asset_lena_png.png');
+    final HttpServer server =
+        await HttpServer.bind(InternetAddress.loopbackIPv4, 0, shared: true);
+    final AnimatedWebpFixture fixture = AnimatedWebpFixture._(
+      server,
+      images[0],
+      images[1],
+      images[2],
+      pngData.buffer.asUint8List(
+        pngData.offsetInBytes,
+        pngData.lengthInBytes,
+      ),
+    );
+    server.listen(fixture._serve);
+    return fixture;
+  }
+
+  static Future<List<Uint8List>> _loadAssets(List<String> assets) {
+    return Future.wait(
+      assets.map((String asset) async {
         final ByteData data = await rootBundle.load(asset);
         return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
       }),
     );
-    final HttpServer server =
-        await HttpServer.bind(InternetAddress.loopbackIPv4, 0, shared: true);
-    final AnimatedWebpFixture fixture = AnimatedWebpFixture._(server, images);
-    server.listen(fixture._serve);
-    return fixture;
   }
 
   Future<void> close() => _server.close(force: true);
 
   Future<void> _serve(HttpRequest request) async {
     final int? item = int.tryParse(request.uri.queryParameters['item'] ?? '');
-    if (request.uri.path != '/animated.webp' ||
-        item == null ||
-        item < 0 ||
-        item >= _images.length) {
+    late final Uint8List bytes;
+    late final ContentType contentType;
+    late final String fixtureName;
+
+    if (item != null &&
+        item >= 0 &&
+        item < benchmarkAnimalCount &&
+        request.uri.path == '/animals/static.webp') {
+      bytes = _staticAnimalWebps[item];
+      contentType = ContentType('image', 'webp');
+      fixtureName = 'static_webp';
+      _setAnimalHeaders(request.response, item);
+    } else if (item != null &&
+        item >= 0 &&
+        item < benchmarkAnimalCount &&
+        request.uri.path == '/animals/animated.webp') {
+      bytes = _animatedAnimalWebps[item];
+      contentType = ContentType('image', 'webp');
+      fixtureName = 'animated_webp';
+      _setAnimalHeaders(request.response, item);
+    } else if (item != null &&
+        item >= 0 &&
+        item < benchmarkAnimalCount &&
+        request.uri.path == '/animals/animated.gif') {
+      bytes = _animalGifs[item];
+      contentType = ContentType('image', 'gif');
+      fixtureName = 'animated_gif';
+      _setAnimalHeaders(request.response, item);
+    } else if (request.uri.path == '/static.png') {
+      bytes = _png;
+      contentType = ContentType('image', 'png');
+      fixtureName = 'static_png';
+    } else {
       request.response.statusCode = HttpStatus.notFound;
       await request.response.close();
       return;
     }
 
-    final Uint8List bytes = _images[item];
-    request.response.headers.contentType = ContentType('image', 'webp');
+    request.response.headers.contentType = contentType;
     request.response.headers
         .set(HttpHeaders.cacheControlHeader, 'public,max-age=31536000');
-    request.response.headers.set('x-power-image-fixture', item.toString());
-    request.response.headers
-        .set('x-power-image-animal', benchmarkAnimatedWebpAnimalNames[item]);
+    request.response.headers.set('x-power-image-format', fixtureName);
     request.response.contentLength = bytes.length;
     request.response.add(bytes);
     await request.response.close();
+  }
+
+  void _setAnimalHeaders(HttpResponse response, int item) {
+    response.headers.set('x-power-image-fixture', item.toString());
+    response.headers.set(
+      'x-power-image-animal',
+      benchmarkAnimalNames[item],
+    );
   }
 }

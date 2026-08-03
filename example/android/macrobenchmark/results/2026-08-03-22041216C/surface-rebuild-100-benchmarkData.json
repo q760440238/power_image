@@ -1,0 +1,157 @@
+{
+    "context": {
+        "build": {
+            "brand": "Redmi",
+            "device": "xaga",
+            "fingerprint": "Redmi/xaga/xaga:14/UP1A.231005.007/OS2.0.12.0.ULOCNXM:user/release-keys",
+            "id": "UP1A.231005.007",
+            "model": "22041216C",
+            "type": "user",
+            "version": {
+                "codename": "REL",
+                "sdk": 34
+            }
+        },
+        "cpuCoreCount": 8,
+        "cpuLocked": true,
+        "cpuMaxFreqHz": 2850000000,
+        "memTotalBytes": 7848685568,
+        "sustainedPerformanceModeEnabled": false,
+        "artMainlineVersion": 340090000,
+        "osCodenameAbbreviated": "U",
+        "compilationMode": "run-from-apk",
+        "payload": {}
+    },
+    "benchmarks": [
+        {
+            "name": "releaseAndRebuild100NativeSurfaces",
+            "params": {},
+            "className": "com.taobao.power_image_example.macrobenchmark.CacheLifecycleBenchmark",
+            "totalRunTimeNs": 41678773848,
+            "metrics": {
+                "memoryGpuMaxKb": {
+                    "minimum": 147380.0,
+                    "maximum": 151868.0,
+                    "median": 148708.0,
+                    "coefficientOfVariation": 0.01181542416156973,
+                    "runs": [
+                        151868.0,
+                        147852.0,
+                        149400.0,
+                        148708.0,
+                        147380.0
+                    ]
+                },
+                "memoryHeapSizeMaxKb": {
+                    "minimum": 69926.0,
+                    "maximum": 72044.0,
+                    "median": 71206.0,
+                    "coefficientOfVariation": 0.012690099921224253,
+                    "runs": [
+                        69926.0,
+                        70664.0,
+                        72003.0,
+                        71206.0,
+                        72044.0
+                    ]
+                },
+                "memoryRssAnonMaxKb": {
+                    "minimum": 172076.0,
+                    "maximum": 184408.0,
+                    "median": 179728.0,
+                    "coefficientOfVariation": 0.02893686467893369,
+                    "runs": [
+                        172076.0,
+                        179728.0,
+                        180928.0,
+                        184408.0,
+                        173672.0
+                    ]
+                },
+                "memoryRssFileMaxKb": {
+                    "minimum": 254464.0,
+                    "maximum": 260244.0,
+                    "median": 256576.0,
+                    "coefficientOfVariation": 0.009606579568329807,
+                    "runs": [
+                        260244.0,
+                        254884.0,
+                        258664.0,
+                        254464.0,
+                        256576.0
+                    ]
+                },
+                "operationCountCount": {
+                    "minimum": 1.0,
+                    "maximum": 1.0,
+                    "median": 1.0,
+                    "coefficientOfVariation": 0.0,
+                    "runs": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                "operationMaxMsMaxMs": {
+                    "minimum": 431.939154,
+                    "maximum": 541.504923,
+                    "median": 530.07723,
+                    "coefficientOfVariation": 0.11275356015927294,
+                    "runs": [
+                        530.07723,
+                        431.939154,
+                        537.559077,
+                        437.407616,
+                        541.504923
+                    ]
+                },
+                "operationMsAverageMs": {
+                    "minimum": 431.939154,
+                    "maximum": 541.504923,
+                    "median": 530.07723,
+                    "coefficientOfVariation": 0.11275356015927294,
+                    "runs": [
+                        530.07723,
+                        431.939154,
+                        537.559077,
+                        437.407616,
+                        541.504923
+                    ]
+                }
+            },
+            "sampledMetrics": {},
+            "warmupIterations": 0,
+            "repeatIterations": 5,
+            "thermalThrottleSleepSeconds": 0,
+            "profilerOutputs": [
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 0",
+                    "filename": "CacheLifecycleBenchmark_releaseAndRebuild100NativeSurfaces_iter000_2026-08-03-11-28-56.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 1",
+                    "filename": "CacheLifecycleBenchmark_releaseAndRebuild100NativeSurfaces_iter001_2026-08-03-11-29-02.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 2",
+                    "filename": "CacheLifecycleBenchmark_releaseAndRebuild100NativeSurfaces_iter002_2026-08-03-11-29-07.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 3",
+                    "filename": "CacheLifecycleBenchmark_releaseAndRebuild100NativeSurfaces_iter003_2026-08-03-11-29-12.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 4",
+                    "filename": "CacheLifecycleBenchmark_releaseAndRebuild100NativeSurfaces_iter004_2026-08-03-11-29-17.perfetto-trace"
+                }
+            ]
+        }
+    ]
+}

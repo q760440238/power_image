@@ -179,7 +179,8 @@ public abstract class FlutterMultiFrameImage extends FlutterImage implements Dra
             }
 
             final long surfaceReadyAt = SystemClock.elapsedRealtimeNanos();
-            final Canvas canvas = lockSurfaceCanvas(surface);
+            final Canvas canvas = lockSurfaceCanvas(
+                    surface, currentDestRect.width(), currentDestRect.height());
             final long canvasLockedAt = SystemClock.elapsedRealtimeNanos();
             long drawableDrawnAt;
             try {
@@ -190,7 +191,7 @@ public abstract class FlutterMultiFrameImage extends FlutterImage implements Dra
                 currentDrawable.draw(canvas);
             } finally {
                 drawableDrawnAt = SystemClock.elapsedRealtimeNanos();
-                surface.unlockCanvasAndPost(canvas);
+                unlockSurfaceCanvasAndPost(surface, canvas);
             }
             final long framePostedAt = SystemClock.elapsedRealtimeNanos();
             if (PowerImageDiagnostics.isVerboseEnabled()
@@ -358,6 +359,7 @@ public abstract class FlutterMultiFrameImage extends FlutterImage implements Dra
         }
         synchronized (surfaceLock) {
             surfaceProvider = null;
+            releaseSurfaceRenderer();
             resetCanvasMode();
         }
         renderState.clearDirty();
@@ -480,6 +482,7 @@ public abstract class FlutterMultiFrameImage extends FlutterImage implements Dra
                             }
                         }
                         surfaceProvider = null;
+                        releaseSurfaceRenderer();
                     }
                 } finally {
                     started = false;

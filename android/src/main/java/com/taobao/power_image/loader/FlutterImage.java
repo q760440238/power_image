@@ -21,6 +21,7 @@ public abstract class FlutterImage {
     protected boolean needRecycle;
     private volatile int canvasMode = CANVAS_MODE_UNKNOWN;
     private volatile String diagnosticRequestId;
+    private FencedSurfaceRenderer fencedRenderer;
 
     public interface SurfaceProvider {
         Surface getSurface();
@@ -95,6 +96,7 @@ public abstract class FlutterImage {
      * Called when Flutter temporarily destroys the backing surface.
      */
     public void onSurfaceCleanup() {
+        releaseSurfaceRenderer();
         resetCanvasMode();
     }
 
@@ -137,9 +139,16 @@ public abstract class FlutterImage {
         return diagnosticRequestId;
     }
 
-    protected final Canvas lockSurfaceCanvas(Surface surface) {
+    protected final Canvas lockSurfaceCanvas(Surface surface, int width, int height) {
         if (surface == null || !surface.isValid()) {
             throw new IllegalStateException("Surface is unavailable");
+        }
+        if (needsFencedHwuiRenderer()) {
+            if (fencedRenderer == null) {
+                fencedRenderer = new FencedSurfaceRenderer();
+            }
+            canvasMode = CANVAS_MODE_HARDWARE;
+            return fencedRenderer.lock(surface, width, height);
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
                 && canvasMode != CANVAS_MODE_SOFTWARE) {
@@ -159,6 +168,31 @@ public abstract class FlutterImage {
         Canvas canvas = surface.lockCanvas(null);
         canvasMode = CANVAS_MODE_SOFTWARE;
         return canvas;
+    }
+
+    protected final void unlockSurfaceCanvasAndPost(Surface surface, Canvas canvas) {
+        if (fencedRenderer != null && fencedRenderer.owns(canvas)) {
+            fencedRenderer.unlockAndPost();
+            return;
+        }
+        surface.unlockCanvasAndPost(canvas);
+    }
+
+    protected final void releaseSurfaceRenderer() {
+        FencedSurfaceRenderer renderer = fencedRenderer;
+        if (renderer == null) {
+            return;
+        }
+        fencedRenderer = null;
+        renderer.release();
+    }
+
+    static boolean needsFencedHwuiRenderer(int sdkInt) {
+        return sdkInt >= Build.VERSION_CODES.Q;
+    }
+
+    private static boolean needsFencedHwuiRenderer() {
+        return needsFencedHwuiRenderer(Build.VERSION.SDK_INT);
     }
 
     protected final void resetCanvasMode() {

@@ -1,0 +1,199 @@
+{
+    "context": {
+        "build": {
+            "brand": "HUAWEI",
+            "device": "HWVOG",
+            "fingerprint": "HUAWEI/VOG-AL10/HWVOG:10/HUAWEIVOG-AL10/10.1.0.162C00:user/release-keys",
+            "id": "HUAWEIVOG-AL10",
+            "model": "VOG-AL10",
+            "type": "user",
+            "version": {
+                "codename": "REL",
+                "sdk": 29
+            }
+        },
+        "cpuCoreCount": 8,
+        "cpuLocked": false,
+        "cpuMaxFreqHz": 2600000000,
+        "memTotalBytes": 7975907328,
+        "sustainedPerformanceModeEnabled": false,
+        "artMainlineVersion": -1,
+        "osCodenameAbbreviated": "H",
+        "compilationMode": "unknown",
+        "payload": {}
+    },
+    "benchmarks": [
+        {
+            "name": "rawBytesDiskHit",
+            "params": {},
+            "className": "com.taobao.power_image_example.macrobenchmark.CacheLifecycleBenchmark",
+            "totalRunTimeNs": 59070940616,
+            "metrics": {
+                "memoryHeapSizeMaxKb": {
+                    "minimum": 1686.0,
+                    "maximum": 1688.0,
+                    "median": 1687.0,
+                    "coefficientOfVariation": 3.365025859253937E-4,
+                    "runs": [
+                        1687.0,
+                        1687.0,
+                        1686.0,
+                        1688.0,
+                        1687.0,
+                        1687.0,
+                        1687.0,
+                        1687.0,
+                        1687.0,
+                        1686.0
+                    ]
+                },
+                "memoryRssAnonMaxKb": {
+                    "minimum": 47220.0,
+                    "maximum": 51652.0,
+                    "median": 48314.0,
+                    "coefficientOfVariation": 0.03229585310058405,
+                    "runs": [
+                        51652.0,
+                        50628.0,
+                        47220.0,
+                        47704.0,
+                        48196.0,
+                        47812.0,
+                        48128.0,
+                        50328.0,
+                        50808.0,
+                        48432.0
+                    ]
+                },
+                "memoryRssFileMaxKb": {
+                    "minimum": 101152.0,
+                    "maximum": 180004.0,
+                    "median": 179348.0,
+                    "coefficientOfVariation": 0.1442273865907308,
+                    "runs": [
+                        101152.0,
+                        179944.0,
+                        179224.0,
+                        179536.0,
+                        179680.0,
+                        178524.0,
+                        179472.0,
+                        180004.0,
+                        179024.0,
+                        179076.0
+                    ]
+                },
+                "operationCountCount": {
+                    "minimum": 1.0,
+                    "maximum": 1.0,
+                    "median": 1.0,
+                    "coefficientOfVariation": 0.0,
+                    "runs": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                "operationMaxMsMaxMs": {
+                    "minimum": 18.350521,
+                    "maximum": 49.277604,
+                    "median": 24.6893235,
+                    "coefficientOfVariation": 0.38960267140650334,
+                    "runs": [
+                        49.277604,
+                        28.622396,
+                        45.007813,
+                        18.350521,
+                        28.148959,
+                        21.654688,
+                        19.652604,
+                        20.532292,
+                        20.086979,
+                        27.723959
+                    ]
+                },
+                "operationMsAverageMs": {
+                    "minimum": 18.350521,
+                    "maximum": 49.277604,
+                    "median": 24.6893235,
+                    "coefficientOfVariation": 0.38960267140650334,
+                    "runs": [
+                        49.277604,
+                        28.622396,
+                        45.007813,
+                        18.350521,
+                        28.148959,
+                        21.654688,
+                        19.652604,
+                        20.532292,
+                        20.086979,
+                        27.723959
+                    ]
+                }
+            },
+            "sampledMetrics": {},
+            "warmupIterations": 0,
+            "repeatIterations": 10,
+            "thermalThrottleSleepSeconds": 0,
+            "profilerOutputs": [
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 0",
+                    "filename": "CacheLifecycleBenchmark_rawBytesDiskHit_iter000_2026-08-03-13-18-05.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 1",
+                    "filename": "CacheLifecycleBenchmark_rawBytesDiskHit_iter001_2026-08-03-13-18-09.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 2",
+                    "filename": "CacheLifecycleBenchmark_rawBytesDiskHit_iter002_2026-08-03-13-18-14.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 3",
+                    "filename": "CacheLifecycleBenchmark_rawBytesDiskHit_iter003_2026-08-03-13-18-18.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 4",
+                    "filename": "CacheLifecycleBenchmark_rawBytesDiskHit_iter004_2026-08-03-13-18-22.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 5",
+                    "filename": "CacheLifecycleBenchmark_rawBytesDiskHit_iter005_2026-08-03-13-18-27.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 6",
+                    "filename": "CacheLifecycleBenchmark_rawBytesDiskHit_iter006_2026-08-03-13-18-31.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 7",
+                    "filename": "CacheLifecycleBenchmark_rawBytesDiskHit_iter007_2026-08-03-13-18-35.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 8",
+                    "filename": "CacheLifecycleBenchmark_rawBytesDiskHit_iter008_2026-08-03-13-18-39.perfetto-trace"
+                },
+                {
+                    "type": "PerfettoTrace",
+                    "label": "Trace Iteration 9",
+                    "filename": "CacheLifecycleBenchmark_rawBytesDiskHit_iter009_2026-08-03-13-18-43.perfetto-trace"
+                }
+            ]
+        }
+    ]
+}

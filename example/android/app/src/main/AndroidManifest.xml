@@ -11,6 +11,12 @@
         android:usesCleartextTraffic="true"
         android:label="power_image_example"
         android:icon="@mipmap/ic_launcher">
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="true" />
+        <meta-data
+            android:name="io.flutter.embedding.android.ImpellerBackend"
+            android:value="vulkan" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

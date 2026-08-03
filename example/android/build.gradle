@@ -8,6 +8,21 @@ allprojects {
 rootProject.buildDir = '../build'
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
+
+    // jni 1.0.x checks for the namespace DSL with hasProperty(), which
+    // returns false under AGP 8.11 even though the DSL is available. Register
+    // these compatibility namespaces before the plugin creates its variants.
+    if (project.name == 'jni') {
+        project.plugins.withId('com.android.library') {
+            project.extensions.getByName('android').namespace =
+                    'com.github.dart_lang.jni'
+        }
+    } else if (project.name == 'jni_flutter') {
+        project.plugins.withId('com.android.library') {
+            project.extensions.getByName('android').namespace =
+                    'com.github.dart_lang.jni_flutter'
+        }
+    }
 }
 subprojects {
     project.evaluationDependsOn(':app')

@@ -2,14 +2,15 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:power_image/src/tools/power_image_monitor.dart';
-import 'package:power_image_ext/image_provider_ext.dart';
 
 import '../external/power_external_image_provider.dart';
+import '../network/power_network_image_provider.dart';
 import '../texture/power_texture_image_provider.dart';
 import 'power_image_loader.dart';
 import '../options/power_image_request_options.dart';
+import '../options/power_image_request_options_src.dart';
 
-abstract class PowerImageProvider extends ImageProviderExt<PowerImageProvider> {
+abstract class PowerImageProvider extends ImageProvider<PowerImageProvider> {
   factory PowerImageProvider.options(PowerImageRequestOptions options) {
     /// renderingType null case
     if (options.renderingType == null) {
@@ -17,9 +18,22 @@ abstract class PowerImageProvider extends ImageProviderExt<PowerImageProvider> {
         src: options.src,
         imageType: options.imageType,
         renderingType: PowerImageLoader.instance.globalRenderType,
+        networkBackend: options.networkBackend,
+        headers: options.headers,
+        cacheKey: options.cacheKey,
+        timeout: options.timeout,
+        retryCount: options.retryCount,
+        retryDelay: options.retryDelay,
+        cancellationToken: options.cancellationToken,
+        cacheRawBytes: options.cacheRawBytes,
+        networkPriority: options.networkPriority,
         imageWidth: options.imageWidth,
         imageHeight: options.imageHeight,
       );
+    }
+
+    if (_usesFlutterNetworkCodec(options)) {
+      return PowerNetworkImageProvider(options);
     }
 
     /// must use one of renderingTypeExternal \ renderingTypeTexture
@@ -32,6 +46,29 @@ abstract class PowerImageProvider extends ImageProviderExt<PowerImageProvider> {
     } else {
       return PowerTextureImageProvider(options);
     }
+  }
+
+  static bool _usesFlutterNetworkCodec(PowerImageRequestOptions options) {
+    if (options.imageType != imageTypeNetwork ||
+        options.networkBackend == PowerImageNetworkBackend.native) {
+      return false;
+    }
+    final PowerImageRequestOptionsSrc src = options.src;
+    if (src is! PowerImageRequestOptionsSrcNormal) {
+      return false;
+    }
+    final Uri? uri = Uri.tryParse(src.src);
+    final String scheme = uri?.scheme.toLowerCase() ?? '';
+    final bool isHttp = scheme == 'http' || scheme == 'https';
+    if (options.networkBackend == PowerImageNetworkBackend.flutterCodec &&
+        !isHttp) {
+      throw ArgumentError.value(
+        src.src,
+        'src',
+        'The Flutter network codec backend requires an HTTP(S) URL.',
+      );
+    }
+    return isHttp;
   }
 
   PowerImageRequestOptions options;
@@ -51,27 +88,12 @@ abstract class PowerImageProvider extends ImageProviderExt<PowerImageProvider> {
 
   ImageStreamCompleter? _completer;
 
-  Future<ImageInfo> _loadAsync(PowerImageProvider key) async {
+  Future<Map> loadNativeResult(PowerImageProvider key) async {
     try {
-      PowerImageCompleter powerImageCompleter = PowerImageLoader.instance
-          .loadImage(options);
+      PowerImageCompleter powerImageCompleter =
+          PowerImageLoader.instance.loadImage(options);
       Map map = await powerImageCompleter.completer!.future;
       bool? success = map['success'];
-
-      // Native animated textures own a SurfaceProducer and must be released as
-      // soon as they leave the widget tree. Flutter-codec animations do not own
-      // a texture; keeping their metadata in the bounded ImageCache avoids
-      // restarting the native request and Glide disk lookup on every re-entry.
-      bool? isMultiFrame = map['_multiFrame'];
-      final bool usesFlutterCodec = map['renderingBackend'] == 'flutterCodec';
-      if (isMultiFrame == true && !usesFlutterCodec) {
-        _completer!.addOnLastListenerRemovedCallback(() {
-          scheduleMicrotask(() {
-            PaintingBinding.instance!.imageCache!.evict(key);
-          });
-        });
-      }
-      _completer = null;
 
       if (success != true) {
         // The network may be only temporarily unavailable, or the file will be
@@ -83,7 +105,7 @@ abstract class PowerImageProvider extends ImageProviderExt<PowerImageProvider> {
         PowerImageMonitor.instance().anErrorOccurred(exception);
         throw exception;
       }
-      return createImageInfo(map);
+      return map;
     } catch (e) {
       // Depending on where the exception was thrown, the image cache may not
       // have had a chance to track the key in the cache at all.
@@ -97,6 +119,20 @@ abstract class PowerImageProvider extends ImageProviderExt<PowerImageProvider> {
     }
   }
 
+  Future<ImageInfo> _loadAsync(PowerImageProvider key) async {
+    final Map map = await loadNativeResult(key);
+    if (map['_multiFrame'] == true &&
+        map['renderingBackend'] != 'flutterCodec') {
+      _completer!.addOnLastListenerRemovedCallback(() {
+        scheduleMicrotask(() {
+          PaintingBinding.instance.imageCache.evict(key);
+        });
+      });
+    }
+    _completer = null;
+    return createImageInfo(map);
+  }
+
   FutureOr<ImageInfo> createImageInfo(Map map);
 
   @override
@@ -105,10 +141,10 @@ abstract class PowerImageProvider extends ImageProviderExt<PowerImageProvider> {
   }
 
   @override
-  bool operator ==(dynamic other) {
+  bool operator ==(Object other) {
     //TODO options判断相等
     if (other.runtimeType != runtimeType) return false;
-    final PowerImageProvider typedOther = other;
+    final PowerImageProvider typedOther = other as PowerImageProvider;
     return options == typedOther.options && scale == typedOther.scale;
   }
 
@@ -117,18 +153,15 @@ abstract class PowerImageProvider extends ImageProviderExt<PowerImageProvider> {
 
   @override
   String toString() => '$runtimeType("$options", scale: $scale)';
-
-  @override
-  void dispose() {}
 }
 
 class PowerImageLoadException implements Exception {
   /// Creates a [PowerImageLoadException] with the specified native State [state]
   /// and request [uniqueKey].
   PowerImageLoadException({required this.nativeResult})
-    : assert(nativeResult != null),
-      _message =
-          'Power Image request failed. For details, see the variable nativeResult';
+      : assert(nativeResult != null),
+        _message =
+            'Power Image request failed. For details, see the variable nativeResult';
 
   /// 0 = {map entry} "success" -> false
   /// 1 = {map entry} "uniqueKey" -> "{src: http://img.alicdn.com//bao//uploaded//i2//O1CN01SNnaus2KLND4UQngH_!!0-fleamarket.jpg}_imageTyp..."

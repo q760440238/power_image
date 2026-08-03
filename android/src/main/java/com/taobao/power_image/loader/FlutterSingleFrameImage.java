@@ -34,6 +34,7 @@ public class FlutterSingleFrameImage extends FlutterImage {
 
     @Override
     public void release() {
+        releaseSurfaceRenderer();
         if (needRecycle && bitmap != null) {
             bitmap.recycle();
             bitmap = null;
@@ -52,11 +53,12 @@ public class FlutterSingleFrameImage extends FlutterImage {
 
     @Override
     public void draw(Surface surface, Rect destRect) {
-        final Canvas canvas = lockSurfaceCanvas(surface);
+        final Canvas canvas = lockSurfaceCanvas(
+                surface, destRect.width(), destRect.height());
         try {
             canvas.drawBitmap(bitmap, srcRect, destRect, null);
         } finally {
-            surface.unlockCanvasAndPost(canvas);
+            unlockSurfaceCanvasAndPost(surface, canvas);
         }
     }
 

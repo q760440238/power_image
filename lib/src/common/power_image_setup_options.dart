@@ -1,10 +1,13 @@
 import 'package:power_image/src/tools/power_image_monitor.dart';
 
+import '../network/power_image_network_controls.dart';
+
 class PowerImageSetupOptions {
   PowerImageSetupOptions(this.globalRenderType,
       {this.errorCallback,
       this.errorCallbackSamplingRate = 1.0,
-      this.debugLogging = false});
+      this.debugLogging = false,
+      this.rawBytesCache});
 
   /// const String renderingTypeExternal = "external";
   /// const String renderingTypeTexture = "texture";
@@ -31,4 +34,8 @@ class PowerImageSetupOptions {
   /// Enables detailed Android request, surface and frame timing logs.
   /// Disabled by default and ignored on iOS.
   final bool debugLogging;
+
+  /// Optional encoded-byte cache used by the direct Flutter network codec.
+  /// Cache hits are decoded from memory bytes and never create an `Image.file`.
+  final PowerImageRawBytesCache? rawBytesCache;
 }

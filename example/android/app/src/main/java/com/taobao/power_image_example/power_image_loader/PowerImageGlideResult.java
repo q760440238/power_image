@@ -1,6 +1,5 @@
 package com.taobao.power_image_example.power_image_loader;
 
-import android.graphics.BitmapFactory;
 import android.graphics.drawable.AnimatedImageDrawable;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
@@ -21,16 +20,12 @@ import com.bumptech.glide.request.FutureTarget;
 import com.bumptech.glide.request.target.Target;
 import com.taobao.power_image.loader.PowerImageLoaderProtocol;
 import com.taobao.power_image.PowerImageDiagnostics;
-import com.taobao.power_image.loader.FlutterEncodedImage;
 import com.taobao.power_image.loader.FlutterSingleFrameImage;
 import com.taobao.power_image.loader.PowerImageResult;
 import com.taobao.power_image.request.PowerImageRequestConfig;
 import com.taobao.power_image_example.GlideAnimatedImageDrawable;
 import com.taobao.power_image_example.GlideMultiFrameImage;
 import com.taobao.power_image_example.GlideWebpMultiFrameImage;
-
-import java.io.File;
-import java.io.IOException;
 
 final class PowerImageGlideResult {
 
@@ -100,89 +95,6 @@ final class PowerImageGlideResult {
                 .submit(
                         request.width <= 0 ? Target.SIZE_ORIGINAL : request.width,
                         request.height <= 0 ? Target.SIZE_ORIGINAL : request.height);
-        response.onRequestHandle(new PowerImageLoaderProtocol.PowerImageRequestHandle() {
-            @Override
-            public void cancel() {
-                requestManager.clear(target);
-            }
-        });
-    }
-
-    static void submitEncodedWebp(
-            final RequestManager requestManager,
-            Object model,
-            final PowerImageRequestConfig request,
-            final PowerImageLoaderProtocol.PowerImageResponse response) {
-        final long startedAtNanos = SystemClock.elapsedRealtimeNanos();
-        PowerImageDiagnostics.debug(
-                "glide_encoded_submit",
-                request.requestId,
-                "target=" + request.width + "x" + request.height);
-        final FutureTarget<File> target = requestManager.downloadOnly()
-                .load(model)
-                .listener(new RequestListener<File>() {
-                    @Override
-                    public boolean onLoadFailed(
-                            @Nullable GlideException e,
-                            Object model,
-                            Target<File> target,
-                            boolean isFirstResource) {
-                        PowerImageDiagnostics.error(
-                                "glide_encoded_failed",
-                                request.requestId,
-                                "elapsedMs="
-                                        + PowerImageDiagnostics.elapsedMillis(startedAtNanos),
-                                e);
-                        response.onResult(PowerImageResult.genFailRet(
-                                "Native加载失败: "
-                                        + (e != null ? e.getMessage() : "null")));
-                        return true;
-                    }
-
-                    @Override
-                    public boolean onResourceReady(
-                            File resource,
-                            Object model,
-                            Target<File> target,
-                            DataSource dataSource,
-                            boolean isFirstResource) {
-                        try {
-                            BitmapFactory.Options bounds = new BitmapFactory.Options();
-                            bounds.inJustDecodeBounds = true;
-                            BitmapFactory.decodeFile(resource.getAbsolutePath(), bounds);
-                            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
-                                throw new IOException("Unable to read WebP dimensions");
-                            }
-                            PowerImageDiagnostics.debug(
-                                    "glide_encoded_ready",
-                                    request.requestId,
-                                    "elapsedMs="
-                                            + PowerImageDiagnostics.elapsedMillis(startedAtNanos)
-                                            + " source=" + dataSource
-                                            + " bytes=" + resource.length()
-                                            + " size=" + bounds.outWidth + "x"
-                                            + bounds.outHeight
-                                            + " thread=" + Thread.currentThread().getName());
-                            response.onResult(PowerImageResult.genSucRet(
-                                    new FlutterEncodedImage(
-                                            resource.getAbsolutePath(),
-                                            bounds.outWidth,
-                                            bounds.outHeight,
-                                            2)));
-                        } catch (IOException | RuntimeException error) {
-                            PowerImageDiagnostics.error(
-                                    "glide_encoded_read_failed",
-                                    request.requestId,
-                                    "elapsedMs="
-                                            + PowerImageDiagnostics.elapsedMillis(startedAtNanos),
-                                    error);
-                            response.onResult(PowerImageResult.genFailRet(
-                                    "Native加载失败: " + error.getMessage()));
-                        }
-                        return true;
-                    }
-                })
-                .submit();
         response.onRequestHandle(new PowerImageLoaderProtocol.PowerImageRequestHandle() {
             @Override
             public void cancel() {
