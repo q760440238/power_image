@@ -1,0 +1,29 @@
+{
+  "scenario": "releaseAndRebuild100NativeSurfaces",
+  "device": {
+    "model": "HUAWEI VOG-AL10",
+    "android": 10,
+    "sdk": 29,
+    "cpu_core_count": 8
+  },
+  "iterations": 5,
+  "before": {
+    "source": "../2026-08-03-VOG-AL10/23-final-release-rebuild-100-surfaces-5x.json",
+    "operation_ms": [2337.304687, 962.567709, 785.273958, 1004.490625, 657.503646],
+    "operation_ms_p50": 962.567709,
+    "operation_ms_max": 2337.304687,
+    "heap_max_kb_p50": 30432
+  },
+  "after": {
+    "change": "request-scoped SurfaceProducer teardown generations",
+    "operation_ms": [448.98802, 464.892708, 449.123437, 446.621875, 444.672917],
+    "operation_ms_p50": 448.98802,
+    "operation_ms_max": 464.892708,
+    "heap_max_kb_p50": 27703
+  },
+  "delta_percent": {
+    "operation_ms_p50": -53.36,
+    "operation_ms_max": -80.11,
+    "heap_max_kb_p50": -8.97
+  }
+}

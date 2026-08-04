@@ -135,6 +135,8 @@ class PowerImageLoader {
       bool cacheRawBytes = true,
       PowerImageNetworkPriority networkPriority =
           PowerImageNetworkPriority.background,
+      PowerImageDecodeFit decodeFit = PowerImageDecodeFit.contain,
+      int decodeSizeBucket = 16,
       double? imageWidth,
       double? imageHeight,
       ImageErrorListener? onError}) {
@@ -152,6 +154,8 @@ class PowerImageLoader {
             cancellationToken: cancellationToken,
             cacheRawBytes: cacheRawBytes,
             networkPriority: networkPriority,
+            decodeFit: decodeFit,
+            decodeSizeBucket: decodeSizeBucket,
             imageWidth: imageWidth,
             imageHeight: imageHeight),
         context,

@@ -44,9 +44,16 @@ void main() {
         rawBytesCache: rawBytesCache,
       ),
     );
-    final AnimatedWebpFixture fixture = await AnimatedWebpFixture.start();
+    final String initialRoute =
+        WidgetsBinding.instance.platformDispatcher.defaultRouteName;
+    final AnimatedWebpFixture fixture = initialRoute.startsWith(
+      '/benchmark/steady20/',
+    )
+        ? await AnimatedWebpFixture.startGiphyOnly()
+        : await AnimatedWebpFixture.start();
     runApp(MyApp(
       animatedWebpUrl: fixture.url,
+      benchmarkWebpUrl: fixture.giphyWebpUrl,
       comparisonImageUrls: ComparisonImageUrls(
         png: fixture.pngUrl,
         gif: fixture.gifUrl,
@@ -67,10 +74,12 @@ class MyApp extends StatelessWidget {
   const MyApp({
     Key? key,
     required this.animatedWebpUrl,
+    required this.benchmarkWebpUrl,
     required this.comparisonImageUrls,
   }) : super(key: key);
 
   final String animatedWebpUrl;
+  final String benchmarkWebpUrl;
   final ComparisonImageUrls comparisonImageUrls;
 
   // This widget is the root of your application.
@@ -120,6 +129,21 @@ class MyApp extends StatelessWidget {
       case '/benchmark/cache_write_100':
         return CacheWriteBenchmarkPage(
           imageUrl: comparisonImageUrls.staticWebp,
+        );
+      case '/benchmark/steady20/power_flutter':
+        return Steady20BenchmarkPage(
+          library: BenchmarkLibrary.powerImage,
+          imageUrl: benchmarkWebpUrl,
+        );
+      case '/benchmark/steady20/native_glide':
+        return Steady20BenchmarkPage(
+          library: BenchmarkLibrary.powerImageNativeSurface,
+          imageUrl: benchmarkWebpUrl,
+        );
+      case '/benchmark/steady20/extended':
+        return Steady20BenchmarkPage(
+          library: BenchmarkLibrary.extendedImage,
+          imageUrl: benchmarkWebpUrl,
         );
       default:
         return MyHomePage(
@@ -937,6 +961,63 @@ class AnimatedBenchmarkPage extends StatelessWidget {
           cache: true,
         );
     }
+  }
+}
+
+/// Keeps the same 20 high-complexity animated WebPs visible at once so an
+/// external profiler can sample steady-state CPU, GPU frequency and memory.
+class Steady20BenchmarkPage extends StatelessWidget {
+  const Steady20BenchmarkPage({
+    Key? key,
+    required this.library,
+    required this.imageUrl,
+  }) : super(key: key);
+
+  final BenchmarkLibrary library;
+  final String imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final String baseName = benchmarkName(library);
+    final String name = baseName;
+    return Scaffold(
+      body: Semantics(
+        label: 'steady20_${name}_page',
+        child: SingleChildScrollView(
+          child: Wrap(
+            children: List<Widget>.generate(
+              benchmarkGiphyAnimatedWebpAssets.length,
+              (int position) {
+                final int index = benchmarkGiphyShortestLoopFirst[position];
+                final String url = '$imageUrl?library=$name'
+                    '&item=$index&steady20=1';
+                switch (library) {
+                  case BenchmarkLibrary.powerImage:
+                    return PowerImage.network(
+                      url,
+                      networkBackend: PowerImageNetworkBackend.flutterCodec,
+                    );
+                  case BenchmarkLibrary.powerImageNativeSurface:
+                    return PowerImage.network(
+                      url,
+                      networkBackend: PowerImageNetworkBackend.native,
+                      renderingType: renderingTypeTexture,
+                    );
+                  case BenchmarkLibrary.extendedImage:
+                    return ExtendedImage.network(
+                      url,
+                      cache: true,
+                    );
+                  case BenchmarkLibrary.cachedNetworkImage:
+                    throw StateError(
+                        'CNI is not part of the steady20 comparison.');
+                }
+              },
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

@@ -27,6 +27,8 @@ abstract class PowerImageProvider extends ImageProvider<PowerImageProvider> {
         cancellationToken: options.cancellationToken,
         cacheRawBytes: options.cacheRawBytes,
         networkPriority: options.networkPriority,
+        decodeFit: options.decodeFit,
+        decodeSizeBucket: options.decodeSizeBucket,
         imageWidth: options.imageWidth,
         imageHeight: options.imageHeight,
       );

@@ -1,0 +1,63 @@
+{
+  "scenario": "20 animated WebPs in natural-size Wrap",
+  "device": "HUAWEI VOG-AL10 / Android 10 / SDK 29",
+  "config": {
+    "iterations": 3,
+    "warmup_seconds": 12,
+    "sample_seconds": 20,
+    "cooldown_seconds": 8,
+    "same_assets": true,
+    "same_order": true,
+    "fixed_display_or_decode_size": false,
+    "gpu_note": "Frequency is a DVFS proxy; production kernel does not expose utilization."
+  },
+  "results": [
+    {
+      "scenario": "PowerImage Flutter codec",
+      "cpu_core_percent_p50": 132.824,
+      "cpu_core_percent_p95": 135.731,
+      "total_pss_kb_p50": 158923,
+      "graphics_pss_kb_p50": 53272,
+      "gpu_frequency_mhz_p50": 277,
+      "displayed_fps_p50": 60.140,
+      "frame_interval_p95_ms_p50": 18.126
+    },
+    {
+      "scenario": "ExtendedImage 10.1.0",
+      "cpu_core_percent_p50": 134.780,
+      "cpu_core_percent_p95": 136.548,
+      "total_pss_kb_p50": 160596,
+      "graphics_pss_kb_p50": 45812,
+      "gpu_frequency_mhz_p50": 139,
+      "displayed_fps_p50": 60.182,
+      "frame_interval_p95_ms_p50": 18.293
+    },
+    {
+      "scenario": "Pure Android Glide 4.16.0",
+      "cpu_core_percent_p50": 81.431,
+      "cpu_core_percent_p95": 83.517,
+      "total_pss_kb_p50": 55144,
+      "graphics_pss_kb_p50": 7580,
+      "gpu_frequency_mhz_p50": 139,
+      "displayed_fps_p50": 60.202,
+      "frame_interval_p95_ms_p50": 17.451
+    }
+  ],
+  "power_image_delta_percent": {
+    "vs_extended_cpu_p50": -1.45,
+    "vs_extended_total_pss_p50": -1.04,
+    "vs_extended_graphics_pss_p50": 16.28,
+    "vs_glide_cpu_p50": 63.11,
+    "vs_glide_total_pss_p50": 188.20,
+    "vs_glide_graphics_pss_p50": 602.80
+  },
+  "rejected_prototype": {
+    "name": "16 MiB decoded short-loop frame cache",
+    "iterations": 1,
+    "sample_seconds": 20,
+    "baseline_cpu_core_percent_p50": 125.670,
+    "prototype_cpu_core_percent_p50": 137.177,
+    "cpu_delta_percent": 9.16,
+    "decision": "Rejected: did not achieve an 8% reduction and instead increased CPU."
+  }
+}

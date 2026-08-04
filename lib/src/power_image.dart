@@ -35,6 +35,8 @@ class PowerImage extends StatefulWidget {
     bool cacheRawBytes = true,
     PowerImageNetworkPriority networkPriority =
         PowerImageNetworkPriority.visible,
+    PowerImageDecodeFit? decodeFit,
+    int decodeSizeBucket = 16,
     double? imageWidth,
     double? imageHeight,
     this.width,
@@ -58,6 +60,8 @@ class PowerImage extends StatefulWidget {
             cancellationToken: cancellationToken,
             cacheRawBytes: cacheRawBytes,
             networkPriority: networkPriority,
+            decodeFit: decodeFit ?? _decodeFitForBoxFit(fit),
+            decodeSizeBucket: decodeSizeBucket,
             imageWidth: imageWidth ?? makeNumValid(width, null),
             imageHeight: imageHeight ?? makeNumValid(height, null))),
         imageBuilder = null,
@@ -259,6 +263,16 @@ class PowerImage extends StatefulWidget {
 
   @override
   PowerImageState createState() => PowerImageState();
+}
+
+PowerImageDecodeFit _decodeFitForBoxFit(BoxFit fit) {
+  if (fit == BoxFit.cover) {
+    return PowerImageDecodeFit.cover;
+  }
+  if (fit == BoxFit.fill) {
+    return PowerImageDecodeFit.exact;
+  }
+  return PowerImageDecodeFit.contain;
 }
 
 class PowerImageState extends State<PowerImage> {

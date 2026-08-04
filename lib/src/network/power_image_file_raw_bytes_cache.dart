@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:crypto/crypto.dart';
@@ -21,6 +22,7 @@ class PowerImageFileRawBytesCache
   PowerImageFileRawBytesCache({
     required this.directory,
     required this.maxSizeBytes,
+    this.maxPendingWriteBytes = 32 << 20,
   }) : assert(maxSizeBytes > 0, 'maxSizeBytes must be greater than zero.') {
     if (maxSizeBytes <= 0) {
       throw ArgumentError.value(
@@ -29,6 +31,14 @@ class PowerImageFileRawBytesCache
         'must be greater than zero',
       );
     }
+    if (maxPendingWriteBytes <= 0) {
+      throw ArgumentError.value(
+        maxPendingWriteBytes,
+        'maxPendingWriteBytes',
+        'must be greater than zero',
+      );
+    }
+    _directoryReady = directory.create(recursive: true);
     _ready = _initialize();
     unawaited(_ready.catchError((Object _) {}));
   }
@@ -39,8 +49,11 @@ class PowerImageFileRawBytesCache
 
   final Directory directory;
   final int maxSizeBytes;
+  final int maxPendingWriteBytes;
 
   late final Future<void> _ready;
+  late final Future<void> _directoryReady;
+  bool _indexReady = false;
   final Map<String, _FileCacheEntry> _entries = <String, _FileCacheEntry>{};
   final Map<String, Future<Uint8List?>> _reads = <String, Future<Uint8List?>>{};
   final Map<String, Set<Future<ui.ImmutableBuffer?>>> _bufferReads =
@@ -58,16 +71,25 @@ class PowerImageFileRawBytesCache
   int _totalSizeBytes = 0;
   int _accessOrder = 0;
   int _temporaryId = 0;
+  int _pendingWriteBytes = 0;
 
   int _debugDiskReadCount = 0;
 
   int _debugDiskWriteCount = 0;
+  int _debugDroppedWriteCount = 0;
+  int _debugPeakPendingWriteBytes = 0;
 
   @visibleForTesting
   int get debugDiskReadCount => _debugDiskReadCount;
 
   @visibleForTesting
   int get debugDiskWriteCount => _debugDiskWriteCount;
+
+  @visibleForTesting
+  int get debugDroppedWriteCount => _debugDroppedWriteCount;
+
+  @visibleForTesting
+  int get debugPeakPendingWriteBytes => _debugPeakPendingWriteBytes;
 
   /// Starts directory scanning early so the first image does not pay for it.
   Future<void> warmUp() => _ready;
@@ -106,11 +128,11 @@ class PowerImageFileRawBytesCache
 
   @override
   Future<ui.ImmutableBuffer?> readBuffer(String key) async {
-    await _ready;
+    await _directoryReady;
     final String fileName = _fileName(key);
     await _waitForMutation(fileName);
 
-    if (!_entries.containsKey(fileName)) {
+    if (_indexReady && !_entries.containsKey(fileName)) {
       return null;
     }
     final Future<ui.ImmutableBuffer?> read = _readBufferFile(fileName);
@@ -130,11 +152,11 @@ class PowerImageFileRawBytesCache
 
   @override
   Future<Uint8List?> read(String key) async {
-    await _ready;
+    await _directoryReady;
     final String fileName = _fileName(key);
     await _waitForMutation(fileName);
 
-    if (!_entries.containsKey(fileName)) {
+    if (_indexReady && !_entries.containsKey(fileName)) {
       return null;
     }
     final Future<Uint8List?>? pendingRead = _reads[fileName];
@@ -162,52 +184,71 @@ class PowerImageFileRawBytesCache
 
   @override
   Future<void> writeAll(Map<String, Uint8List> entries) async {
-    final List<bool> completed = await Future.wait<bool>(
-      entries.entries.map((MapEntry<String, Uint8List> entry) {
-        return _writeEntry(entry.key, entry.value);
-      }),
-    );
+    final List<Future<bool>> writes = <Future<bool>>[];
+    while (entries.isNotEmpty) {
+      final String key = entries.keys.first;
+      final Uint8List bytes = entries.remove(key)!;
+      writes.add(_writeEntry(key, bytes));
+    }
+    final List<bool> completed = await Future.wait<bool>(writes);
     if (completed.any((bool value) => value)) {
       await compact();
     }
   }
 
   Future<bool> _writeEntry(String key, Uint8List bytes) async {
-    await _ready;
-    final String fileName = _fileName(key);
-    final Future<void>? pendingDeletion = _deletions[fileName];
-    if (pendingDeletion != null) {
-      await pendingDeletion;
-    }
-    final Future<void>? pendingWrite = _writes[fileName];
-    if (pendingWrite != null) {
-      await pendingWrite;
+    final int byteCount = bytes.lengthInBytes;
+    // One oversized entry is allowed through when the queue is otherwise
+    // empty. It is immediately written via `_writeFile`'s temporary-file
+    // replacement path instead of making large images permanently uncacheable.
+    final bool oversized = byteCount > maxPendingWriteBytes;
+    if ((oversized && _pendingWriteBytes != 0) ||
+        (!oversized && _pendingWriteBytes + byteCount > maxPendingWriteBytes)) {
+      _debugDroppedWriteCount += 1;
       return false;
     }
-
-    final int writeLane = _nextWriteLane;
-    _nextWriteLane = (_nextWriteLane + 1) % _writeTails.length;
-    final Future<void> previousWrite = _writeTails[writeLane];
-    final Future<void> write = () async {
-      try {
-        await previousWrite;
-      } on Object {
-        // A failed write must not stop later independent cache entries.
-      }
-      await _writeFile(fileName, bytes);
-    }();
-    _writeTails[writeLane] = write;
-    _writes[fileName] = write;
-    bool completed = false;
+    _pendingWriteBytes += byteCount;
+    _debugPeakPendingWriteBytes =
+        math.max(_debugPeakPendingWriteBytes, _pendingWriteBytes);
     try {
-      await write;
-      completed = true;
-    } finally {
-      if (identical(_writes[fileName], write)) {
-        _writes.remove(fileName);
+      await _ready;
+      final String fileName = _fileName(key);
+      final Future<void>? pendingDeletion = _deletions[fileName];
+      if (pendingDeletion != null) {
+        await pendingDeletion;
       }
+      final Future<void>? pendingWrite = _writes[fileName];
+      if (pendingWrite != null) {
+        await pendingWrite;
+        return false;
+      }
+
+      final int writeLane = _nextWriteLane;
+      _nextWriteLane = (_nextWriteLane + 1) % _writeTails.length;
+      final Future<void> previousWrite = _writeTails[writeLane];
+      final Future<void> write = () async {
+        try {
+          await previousWrite;
+        } on Object {
+          // A failed write must not stop later independent cache entries.
+        }
+        await _writeFile(fileName, bytes);
+      }();
+      _writeTails[writeLane] = write;
+      _writes[fileName] = write;
+      bool completed = false;
+      try {
+        await write;
+        completed = true;
+      } finally {
+        if (identical(_writes[fileName], write)) {
+          _writes.remove(fileName);
+        }
+      }
+      return completed;
+    } finally {
+      _pendingWriteBytes -= byteCount;
     }
-    return completed;
   }
 
   Future<void> touch(String key) => touchAll(<String>[key]);
@@ -258,7 +299,7 @@ class PowerImageFileRawBytesCache
   }
 
   Future<void> _initialize() async {
-    await directory.create(recursive: true);
+    await _directoryReady;
     final List<_ScannedFile> scanned = <_ScannedFile>[];
     await for (final FileSystemEntity entity in directory.list()) {
       final String name = _baseName(entity.path);
@@ -289,14 +330,21 @@ class PowerImageFileRawBytesCache
       return timeOrder != 0 ? timeOrder : left.name.compareTo(right.name);
     });
     for (final _ScannedFile file in scanned) {
-      _entries[file.name] = _FileCacheEntry(
-        size: file.size,
-        accessOrder: ++_accessOrder,
-        lastPersistedAccess: file.modified,
-      );
-      _totalSizeBytes += file.size;
+      final _FileCacheEntry? existing = _entries[file.name];
+      if (existing == null) {
+        _entries[file.name] = _FileCacheEntry(
+          size: file.size,
+          accessOrder: ++_accessOrder,
+          lastPersistedAccess: file.modified,
+        );
+        _totalSizeBytes += file.size;
+      } else if (existing.size != file.size) {
+        _totalSizeBytes += file.size - existing.size;
+        existing.size = file.size;
+      }
     }
     await _trimToCapacity();
+    _indexReady = true;
   }
 
   Future<Uint8List?> _readFile(String fileName) async {

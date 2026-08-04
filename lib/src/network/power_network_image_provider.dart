@@ -37,11 +37,42 @@ class PowerNetworkImageProvider extends PowerImageProvider {
   @override
   Future<PowerImageProvider> obtainKey(ImageConfiguration configuration) {
     final double devicePixelRatio = configuration.devicePixelRatio ?? 1.0;
+    final int? targetWidth = _physicalPixels(
+      options.imageWidth,
+      devicePixelRatio,
+      options.decodeSizeBucket,
+    );
+    final int? targetHeight = _physicalPixels(
+      options.imageHeight,
+      devicePixelRatio,
+      options.decodeSizeBucket,
+    );
     return SynchronousFuture<PowerImageProvider>(PowerNetworkImageProvider._(
-      options,
-      _physicalPixels(options.imageWidth, devicePixelRatio),
-      _physicalPixels(options.imageHeight, devicePixelRatio),
+      _keyOptions(options),
+      targetWidth,
+      targetHeight,
     ));
+  }
+
+  static PowerImageRequestOptions _keyOptions(
+    PowerImageRequestOptions options,
+  ) {
+    return PowerImageRequestOptions(
+      src: options.src,
+      imageType: options.imageType,
+      renderingType: options.renderingType,
+      networkBackend: options.networkBackend,
+      headers: options.headers,
+      cacheKey: options.cacheKey,
+      timeout: options.timeout,
+      retryCount: options.retryCount,
+      retryDelay: options.retryDelay,
+      cancellationToken: options.cancellationToken,
+      cacheRawBytes: options.cacheRawBytes,
+      networkPriority: options.networkPriority,
+      decodeFit: options.decodeFit,
+      decodeSizeBucket: options.decodeSizeBucket,
+    );
   }
 
   @override
@@ -102,9 +133,17 @@ class PowerNetworkImageProvider extends PowerImageProvider {
   static final HttpClient _sharedHttpClient = HttpClient()
     ..autoUncompress = false;
   static final PowerImageTaskScheduler _networkScheduler =
-      PowerImageTaskScheduler(maxConcurrentTasks: 6);
+      PowerImageTaskScheduler(
+    maxConcurrentTasks: 6,
+    maxBackgroundTasks: 4,
+    maxConcurrentCost: 24,
+  );
   static final PowerImageTaskScheduler _firstFrameDecodeScheduler =
-      PowerImageTaskScheduler(maxConcurrentTasks: 6);
+      PowerImageTaskScheduler(
+    maxConcurrentTasks: 6,
+    maxBackgroundTasks: 4,
+    maxConcurrentCost: 24,
+  );
   static final Map<_RawBytesFlightKey, _RawBytesFlight> _rawBytesFlights =
       <_RawBytesFlightKey, _RawBytesFlight>{};
   static final Map<PowerNetworkImageProvider, Set<_PowerNetworkLoadController>>
@@ -231,11 +270,10 @@ class PowerNetworkImageProvider extends PowerImageProvider {
     _PowerNetworkLoadController loadController,
   ) async {
     final ui.Codec codec = await _decodeBufferNow(key, buffer, decode);
-    return PowerImageFirstFrameCodec(
+    return _wrapCodec(
+      key,
       codec: codec,
-      scheduler: _firstFrameDecodeScheduler,
-      priority: () => loadController.priority,
-      onTaskScheduled: loadController.track,
+      loadController: loadController,
     );
   }
 
@@ -259,6 +297,7 @@ class PowerNetworkImageProvider extends PowerImageProvider {
                 intrinsicHeight,
                 targetWidth,
                 targetHeight,
+                key.options.decodeFit,
               ),
     );
     if (key.options.cancellationToken?.isCancelled ?? false) {
@@ -275,12 +314,26 @@ class PowerNetworkImageProvider extends PowerImageProvider {
     _PowerNetworkLoadController loadController,
   ) async {
     final ui.Codec codec = await _decodeBytesNow(key, bytes, decode);
-    return PowerImageFirstFrameCodec(
+    return _wrapCodec(
+      key,
+      codec: codec,
+      loadController: loadController,
+    );
+  }
+
+  ui.Codec _wrapCodec(
+    PowerNetworkImageProvider key, {
+    required ui.Codec codec,
+    required _PowerNetworkLoadController loadController,
+  }) {
+    final ui.Codec scheduled = PowerImageFirstFrameCodec(
       codec: codec,
       scheduler: _firstFrameDecodeScheduler,
       priority: () => loadController.priority,
       onTaskScheduled: loadController.track,
+      cost: () => _taskCost(key),
     );
+    return scheduled;
   }
 
   Future<ui.Codec> _decodeBytesNow(
@@ -305,6 +358,7 @@ class PowerNetworkImageProvider extends PowerImageProvider {
       flight = _RawBytesFlight(
         scheduler: _networkScheduler,
         priority: loadController.priority,
+        cost: _taskCost(key),
         operation: (
           PowerImageCancellationToken token,
           void Function(int, int?) onProgress,
@@ -616,11 +670,16 @@ class PowerNetworkImageProvider extends PowerImageProvider {
     );
   }
 
-  static int? _physicalPixels(double? logicalPixels, double devicePixelRatio) {
+  static int? _physicalPixels(
+    double? logicalPixels,
+    double devicePixelRatio,
+    int bucket,
+  ) {
     if (logicalPixels == null || logicalPixels <= 0) {
       return null;
     }
-    return math.max(1, (logicalPixels * devicePixelRatio).round());
+    final int pixels = math.max(1, (logicalPixels * devicePixelRatio).round());
+    return ((pixels + bucket - 1) ~/ bucket) * bucket;
   }
 
   static ui.TargetImageSize _fitTarget(
@@ -628,18 +687,44 @@ class PowerNetworkImageProvider extends PowerImageProvider {
     int intrinsicHeight,
     int? requestedWidth,
     int? requestedHeight,
+    PowerImageDecodeFit fit,
   ) {
-    double resizeScale = 1.0;
-    if (requestedWidth != null) {
-      resizeScale = math.min(resizeScale, requestedWidth / intrinsicWidth);
+    if (fit == PowerImageDecodeFit.exact) {
+      return ui.TargetImageSize(
+        width: requestedWidth == null
+            ? null
+            : math.min(intrinsicWidth, requestedWidth),
+        height: requestedHeight == null
+            ? null
+            : math.min(intrinsicHeight, requestedHeight),
+      );
     }
-    if (requestedHeight != null) {
-      resizeScale = math.min(resizeScale, requestedHeight / intrinsicHeight);
+    double resizeScale = 1.0;
+    final List<double> scales = <double>[
+      if (requestedWidth != null) requestedWidth / intrinsicWidth,
+      if (requestedHeight != null) requestedHeight / intrinsicHeight,
+    ];
+    if (scales.isNotEmpty) {
+      final double requestedScale = fit == PowerImageDecodeFit.cover
+          ? scales.reduce(math.max)
+          : scales.reduce(math.min);
+      resizeScale = math.min(1.0, requestedScale);
     }
     return ui.TargetImageSize(
       width: math.max(1, (intrinsicWidth * resizeScale).round()),
       height: math.max(1, (intrinsicHeight * resizeScale).round()),
     );
+  }
+
+  static int _taskCost(PowerNetworkImageProvider key) {
+    final int? width = key._targetWidth;
+    final int? height = key._targetHeight;
+    if (width == null || height == null) {
+      return 4;
+    }
+    const int costUnitBytes = 256 << 10;
+    final int decodedBytes = width * height * 4;
+    return math.max(1, math.min(24, (decodedBytes / costUnitBytes).ceil()));
   }
 
   @override
@@ -880,11 +965,13 @@ class _RawBytesFlight {
   _RawBytesFlight({
     required PowerImageTaskScheduler scheduler,
     required PowerImageNetworkPriority priority,
+    required int cost,
     required _RawBytesOperation operation,
   }) {
     _task = scheduler.schedule<Uint8List>(
       () => operation(_cancellationToken, _emitProgress),
       priority: priority,
+      cost: cost,
     );
     future = _task.future;
     future.then<void>(

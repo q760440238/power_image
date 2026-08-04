@@ -15,6 +15,34 @@ Uint8List get _onePixelPng => base64Decode(
     );
 
 void main() {
+  test('decode size buckets share nearby physical-size keys', () async {
+    PowerImageProvider provider(double width, int bucket) {
+      return PowerImageProvider.options(PowerImageRequestOptions.network(
+        'https://images.test/bucket.webp',
+        renderingType: renderingTypeTexture,
+        imageWidth: width,
+        imageHeight: width,
+        decodeSizeBucket: bucket,
+      ));
+    }
+
+    final PowerImageProvider bucketedFirst = await provider(50, 16).obtainKey(
+      const ImageConfiguration(devicePixelRatio: 1),
+    );
+    final PowerImageProvider bucketedSecond = await provider(60, 16).obtainKey(
+      const ImageConfiguration(devicePixelRatio: 1),
+    );
+    final PowerImageProvider exactFirst = await provider(50, 1).obtainKey(
+      const ImageConfiguration(devicePixelRatio: 1),
+    );
+    final PowerImageProvider exactSecond = await provider(60, 1).obtainKey(
+      const ImageConfiguration(devicePixelRatio: 1),
+    );
+
+    expect(bucketedFirst, bucketedSecond);
+    expect(exactFirst, isNot(exactSecond));
+  });
+
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late _MemoryRawBytesCache cache;
@@ -80,6 +108,44 @@ void main() {
     expect(bufferCache.bufferReadKeys, <String>['stable-avatar']);
     expect(bufferCache.readKeys, isEmpty);
     image.dispose();
+  });
+
+  test('decode fit preserves contain, cover and exact geometry', () async {
+    final Uint8List bytes = await _pngBytes(10, 5);
+    cache.values.addAll(<String, Uint8List>{
+      'contain': bytes,
+      'cover': bytes,
+      'exact': bytes,
+    });
+
+    final ImageInfo contain = await _resolve(_provider(
+      cacheKey: 'contain',
+      imageWidth: 4,
+      imageHeight: 4,
+      decodeSizeBucket: 1,
+      decodeFit: PowerImageDecodeFit.contain,
+    ));
+    final ImageInfo cover = await _resolve(_provider(
+      cacheKey: 'cover',
+      imageWidth: 4,
+      imageHeight: 4,
+      decodeSizeBucket: 1,
+      decodeFit: PowerImageDecodeFit.cover,
+    ));
+    final ImageInfo exact = await _resolve(_provider(
+      cacheKey: 'exact',
+      imageWidth: 4,
+      imageHeight: 4,
+      decodeSizeBucket: 1,
+      decodeFit: PowerImageDecodeFit.exact,
+    ));
+
+    expect(<int>[contain.image.width, contain.image.height], <int>[4, 2]);
+    expect(<int>[cover.image.width, cover.image.height], <int>[8, 4]);
+    expect(<int>[exact.image.width, exact.image.height], <int>[4, 4]);
+    contain.dispose();
+    cover.dispose();
+    exact.dispose();
   });
 
   test('headers are sent and cache write waits for the first frame', () async {
@@ -238,6 +304,9 @@ PowerImageProvider _provider({
   int retryCount = 0,
   PowerImageCancellationToken? cancellationToken,
   double? imageWidth,
+  double? imageHeight,
+  int decodeSizeBucket = 16,
+  PowerImageDecodeFit decodeFit = PowerImageDecodeFit.contain,
 }) {
   return PowerImageProvider.options(PowerImageRequestOptions.network(
     'https://example.test/image-no-suffix',
@@ -249,7 +318,23 @@ PowerImageProvider _provider({
     retryCount: retryCount,
     cancellationToken: cancellationToken,
     imageWidth: imageWidth,
+    imageHeight: imageHeight,
+    decodeSizeBucket: decodeSizeBucket,
+    decodeFit: decodeFit,
   ));
+}
+
+Future<Uint8List> _pngBytes(int width, int height) async {
+  final ui.PictureRecorder recorder = ui.PictureRecorder();
+  final ui.Canvas canvas = ui.Canvas(recorder);
+  canvas.drawColor(const ui.Color(0xFF123456), ui.BlendMode.src);
+  final ui.Picture picture = recorder.endRecording();
+  final ui.Image image = await picture.toImage(width, height);
+  final ByteData data =
+      (await image.toByteData(format: ui.ImageByteFormat.png))!;
+  image.dispose();
+  picture.dispose();
+  return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
 }
 
 Future<ImageInfo> _resolve(PowerImageProvider provider) {

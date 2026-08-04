@@ -10,6 +10,9 @@ import 'package:flutter/foundation.dart';
 /// network transfers and codec creation.
 enum PowerImageNetworkPriority { background, visible }
 
+/// Controls how a requested decode box is applied to the source dimensions.
+enum PowerImageDecodeFit { contain, cover, exact }
+
 /// Stores encoded network image bytes without exposing a file-backed
 /// [ImageProvider]. Implementations may persist the bytes on disk.
 abstract class PowerImageRawBytesCache {

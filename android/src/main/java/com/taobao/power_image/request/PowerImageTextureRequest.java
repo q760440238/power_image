@@ -104,7 +104,7 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
         PowerImageDispatcher.getInstance().runOnMainThread(new Runnable() {
             @Override
             public void run() {
-                surfaceReleaseGate.runWhenIdle(new Runnable() {
+                surfaceReleaseGate.runWhenIdle(requestId, new Runnable() {
                     @Override
                     public void run() {
                         if (stopped || isRequestReleased()) {
@@ -158,7 +158,7 @@ public class PowerImageTextureRequest extends PowerImageBaseRequest
         textureRegistryWrf.clear();
         final SurfaceProducerReleaseGate.Release producerRelease =
                 textureEntry != null && !engineDetaching
-                        ? surfaceReleaseGate.beginRelease() : null;
+                        ? surfaceReleaseGate.beginRelease(requestId) : null;
 
         Runnable runnable = new Runnable() {
             @Override

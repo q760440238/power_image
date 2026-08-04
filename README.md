@@ -114,6 +114,7 @@ final rawBytesCache = PowerImageFileRawBytesCache(
     '${temporaryDirectory.path}${Platform.pathSeparator}power_image_raw_bytes',
   ),
   maxSizeBytes: 200 * 1024 * 1024,
+  maxPendingWriteBytes: 32 * 1024 * 1024,
 );
 await rawBytesCache.warmUp();
 
@@ -132,6 +133,12 @@ PowerImage.network(
   retryCount: 2,                       // two retries after the first attempt
   retryDelay: const Duration(milliseconds: 100),
   cancellationToken: cancelToken,
+  // `fit` normally selects contain/cover/exact automatically. Override only
+  // when the decoded geometry must differ from the paint geometry.
+  decodeFit: PowerImageDecodeFit.cover,
+  // Nearby physical requests share a 16-pixel bucket by default. Use 1 for
+  // exact-size diagnostics or benchmarks.
+  decodeSizeBucket: 16,
 );
 
 // For example, when the owning screen is disposed:
@@ -141,7 +148,9 @@ cancelToken.cancel();
 The built-in cache keeps only metadata in memory. It uses capacity-bounded LRU,
 same-key read/write single-flight, same-directory atomic replacement and
 background cleanup. Its file modification times preserve an approximate LRU
-order after a restart. Use one instance per dedicated directory.
+order after a restart. Pending writes are byte-bounded; one oversized entry is
+admitted alone and atomically landed through a temporary file. Use one instance
+per dedicated directory.
 
 `cacheKey` defaults to the URL. This cache deliberately has no TTL or HTTP
 revalidation: use it only for immutable CDN URLs or explicitly versioned cache

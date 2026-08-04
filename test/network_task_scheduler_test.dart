@@ -72,6 +72,68 @@ void main() {
     expect(order, <String>['promoted', 'background']);
   });
 
+  test('background work leaves capacity for a newly visible task', () async {
+    final PowerImageTaskScheduler scheduler = PowerImageTaskScheduler(
+      maxConcurrentTasks: 6,
+      maxBackgroundTasks: 4,
+    );
+    final Completer<void> release = Completer<void>();
+    int backgroundStarted = 0;
+    bool visibleStarted = false;
+    final List<PowerImageScheduledTask<void>> background =
+        List<PowerImageScheduledTask<void>>.generate(6, (_) {
+      return scheduler.schedule<void>(
+        () async {
+          backgroundStarted += 1;
+          await release.future;
+        },
+        priority: PowerImageNetworkPriority.background,
+      );
+    });
+
+    await Future<void>.delayed(Duration.zero);
+    expect(backgroundStarted, 4);
+    final PowerImageScheduledTask<void> visible = scheduler.schedule<void>(
+      () async {
+        visibleStarted = true;
+      },
+      priority: PowerImageNetworkPriority.visible,
+    );
+    await visible.future;
+    expect(visibleStarted, isTrue);
+    expect(backgroundStarted, 4);
+
+    release.complete();
+    await Future.wait<void>(background.map((task) => task.future));
+  });
+
+  test('task costs bound concurrent expensive work', () async {
+    final PowerImageTaskScheduler scheduler = PowerImageTaskScheduler(
+      maxConcurrentTasks: 4,
+      maxConcurrentCost: 4,
+    );
+    final Completer<void> release = Completer<void>();
+    bool secondStarted = false;
+    final PowerImageScheduledTask<void> first = scheduler.schedule<void>(
+      () => release.future,
+      priority: PowerImageNetworkPriority.visible,
+      cost: 3,
+    );
+    final PowerImageScheduledTask<void> second = scheduler.schedule<void>(
+      () async {
+        secondStarted = true;
+      },
+      priority: PowerImageNetworkPriority.visible,
+      cost: 2,
+    );
+
+    await Future<void>.delayed(Duration.zero);
+    expect(secondStarted, isFalse);
+    release.complete();
+    await Future.wait<void>(<Future<void>>[first.future, second.future]);
+    expect(secondStarted, isTrue);
+  });
+
   test('only the first codec frame is scheduled', () async {
     final PowerImageTaskScheduler scheduler =
         PowerImageTaskScheduler(maxConcurrentTasks: 1);

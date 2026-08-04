@@ -21,6 +21,14 @@
   native requests now follow the stream completer's last listener.
 - Add cold-load, raw-byte disk-hit, Flutter ImageCache-hit and 100-Surface
   release/rebuild macrobenchmarks.
+- Add contain/cover/exact decode geometry and physical-pixel decode buckets.
+- Reserve visible transfer/decode slots and cap concurrent pixel-cost work.
+- Let deterministic disk-cache keys bypass startup directory scanning; bound
+  pending write bytes and atomically land one oversized entry at a time.
+- Narrow Surface teardown serialization from the engine generation to each
+  request, so unrelated Surface generations can be created in parallel.
+- Add a natural-size Wrap benchmark for 20 animated WebPs against
+  ExtendedImage 10.1.0 and Android Glide 4.16.0.
 
 ## 0.1.0-pre.2
 - pre publish in github and flutter pub

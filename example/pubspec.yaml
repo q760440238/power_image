@@ -63,6 +63,7 @@ flutter:
      - assets/benchmark/static_webp/
      - assets/benchmark/animated_webp/
      - assets/benchmark/gif/
+     - assets/benchmark/giphy_webp/
      - android/app/src/main/res/drawable-xxhdpi/lena_webp.webp
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware.

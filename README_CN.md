@@ -81,6 +81,21 @@ WidgetsFlutterBinding.ensureInitialized();
     }));
 ```
 
+### Android 网络图片与解码调度
+
+普通 PNG、GIF、WebP 的 HTTP(S) 请求默认直接使用 Flutter codec；原生
+Drawable、业务私有解码器等特殊场景可显式设置
+`networkBackend: PowerImageNetworkBackend.native`。网络和首帧解码队列会为
+可见请求保留槽位，并按像素/字节成本限制并发。
+
+`decodeFit` 支持 `contain`、`cover`、`exact`，默认根据组件的 `fit` 统一推导；
+`decodeSizeBucket` 默认按 16 个物理像素向上分桶，减少相近尺寸造成的重复解码，
+精确尺寸诊断可设为 1。
+
+`PowerImageFileRawBytesCache` 的 `maxPendingWriteBytes` 默认 32 MiB，用于限制
+首帧后的批量写入；单个超预算大文件会独占写通道，并先写临时文件再原子替换。
+确定性 key 的磁盘命中不再等待启动时的全目录扫描。
+
 
 
 ### iOS

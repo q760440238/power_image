@@ -9,24 +9,42 @@ import 'power_image_network_controls.dart';
 /// Visible work always drains before queued prefetch work. Running work is not
 /// preempted, which keeps cancellation and resource ownership straightforward.
 class PowerImageTaskScheduler {
-  PowerImageTaskScheduler({required this.maxConcurrentTasks})
-      : assert(maxConcurrentTasks > 0);
+  PowerImageTaskScheduler({
+    required this.maxConcurrentTasks,
+    int? maxBackgroundTasks,
+    int? maxConcurrentCost,
+  })  : maxBackgroundTasks = maxBackgroundTasks ?? maxConcurrentTasks,
+        maxConcurrentCost = maxConcurrentCost ?? maxConcurrentTasks,
+        assert(maxConcurrentTasks > 0),
+        assert((maxBackgroundTasks ?? maxConcurrentTasks) > 0),
+        assert(
+            (maxBackgroundTasks ?? maxConcurrentTasks) <= maxConcurrentTasks),
+        assert((maxConcurrentCost ?? maxConcurrentTasks) > 0);
 
   final int maxConcurrentTasks;
+  final int maxBackgroundTasks;
+  final int maxConcurrentCost;
   final Queue<_ScheduledTask<dynamic>> _visibleTasks =
       Queue<_ScheduledTask<dynamic>>();
   final Queue<_ScheduledTask<dynamic>> _backgroundTasks =
       Queue<_ScheduledTask<dynamic>>();
   int _runningTasks = 0;
+  int _runningBackgroundTasks = 0;
+  int _runningCost = 0;
 
   PowerImageScheduledTask<T> schedule<T>(
     Future<T> Function() operation, {
     required PowerImageNetworkPriority priority,
+    int cost = 1,
   }) {
+    if (cost <= 0) {
+      throw ArgumentError.value(cost, 'cost', 'must be positive');
+    }
     final _ScheduledTask<T> task = _ScheduledTask<T>(
       owner: this,
       operation: operation,
       priority: priority,
+      cost: cost,
     );
     _queueFor(priority).add(task);
     _drain();
@@ -53,13 +71,26 @@ class PowerImageTaskScheduler {
   }
 
   void _drain() {
-    while (_runningTasks < maxConcurrentTasks &&
-        (_visibleTasks.isNotEmpty || _backgroundTasks.isNotEmpty)) {
-      final _ScheduledTask<dynamic> task = _visibleTasks.isNotEmpty
+    while (_runningTasks < maxConcurrentTasks) {
+      final bool runVisible =
+          _visibleTasks.isNotEmpty && _fitsCost(_visibleTasks.first.cost);
+      final bool runBackground = !runVisible &&
+          _visibleTasks.isEmpty &&
+          _backgroundTasks.isNotEmpty &&
+          _runningBackgroundTasks < maxBackgroundTasks &&
+          _fitsCost(_backgroundTasks.first.cost);
+      if (!runVisible && !runBackground) {
+        return;
+      }
+      final _ScheduledTask<dynamic> task = runVisible
           ? _visibleTasks.removeFirst()
           : _backgroundTasks.removeFirst();
       task.started = true;
       _runningTasks += 1;
+      _runningCost += task.cost;
+      if (task.priority == PowerImageNetworkPriority.background) {
+        _runningBackgroundTasks += 1;
+      }
       Future<dynamic>.sync(task.operation)
           .then<void>(
         task.complete,
@@ -67,9 +98,17 @@ class PowerImageTaskScheduler {
       )
           .then<void>((_) {
         _runningTasks -= 1;
+        _runningCost -= task.cost;
+        if (task.priority == PowerImageNetworkPriority.background) {
+          _runningBackgroundTasks -= 1;
+        }
         _drain();
       });
     }
+  }
+
+  bool _fitsCost(int cost) {
+    return _runningTasks == 0 || _runningCost + cost <= maxConcurrentCost;
   }
 }
 
@@ -92,16 +131,19 @@ class PowerImageFirstFrameCodec implements ui.Codec {
     required PowerImageNetworkPriority Function() priority,
     required void Function(PowerImageScheduledTask<ui.FrameInfo> task)
         onTaskScheduled,
+    int Function()? cost,
   })  : _codec = codec,
         _scheduler = scheduler,
         _priority = priority,
-        _onTaskScheduled = onTaskScheduled;
+        _onTaskScheduled = onTaskScheduled,
+        _cost = cost;
 
   final ui.Codec _codec;
   final PowerImageTaskScheduler _scheduler;
   final PowerImageNetworkPriority Function() _priority;
   final void Function(PowerImageScheduledTask<ui.FrameInfo> task)
       _onTaskScheduled;
+  final int Function()? _cost;
   bool _firstFrameRequested = false;
 
   @override
@@ -119,6 +161,7 @@ class PowerImageFirstFrameCodec implements ui.Codec {
     final PowerImageScheduledTask<ui.FrameInfo> task = _scheduler.schedule(
       _codec.getNextFrame,
       priority: _priority(),
+      cost: _cost?.call() ?? 1,
     );
     _onTaskScheduled(task);
     return task.future;
@@ -133,12 +176,14 @@ class _ScheduledTask<T> {
     required this.owner,
     required this.operation,
     required this.priority,
+    required this.cost,
   });
 
   final PowerImageTaskScheduler owner;
   final Future<T> Function() operation;
   final Completer<T> completer = Completer<T>.sync();
   PowerImageNetworkPriority priority;
+  final int cost;
   bool started = false;
 
   void complete(dynamic value) {

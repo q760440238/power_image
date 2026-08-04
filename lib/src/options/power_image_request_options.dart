@@ -39,12 +39,15 @@ class PowerImageRequestOptions {
       this.cancellationToken,
       this.cacheRawBytes = true,
       this.networkPriority = PowerImageNetworkPriority.visible,
+      this.decodeFit = PowerImageDecodeFit.contain,
+      this.decodeSizeBucket = 16,
       double? imageWidth,
       double? imageHeight})
       : assert(timeout == null || timeout.inMicroseconds > 0,
             'timeout must be greater than zero.'),
         assert(retryCount >= 0, 'retryCount must not be negative.'),
         assert(!retryDelay.isNegative, 'retryDelay must not be negative.'),
+        assert(decodeSizeBucket > 0, 'decodeSizeBucket must be positive.'),
         headers =
             headers == null ? null : Map<String, String>.unmodifiable(headers),
         assert(isNumValid(imageWidth), 'imageWidth is a Invalid value!'),
@@ -63,6 +66,8 @@ class PowerImageRequestOptions {
       this.cancellationToken,
       this.cacheRawBytes = true,
       this.networkPriority = PowerImageNetworkPriority.visible,
+      this.decodeFit = PowerImageDecodeFit.contain,
+      this.decodeSizeBucket = 16,
       double? imageWidth,
       double? imageHeight})
       : src = PowerImageRequestOptionsSrcNormal(src: src),
@@ -71,6 +76,7 @@ class PowerImageRequestOptions {
             'timeout must be greater than zero.'),
         assert(retryCount >= 0, 'retryCount must not be negative.'),
         assert(!retryDelay.isNegative, 'retryDelay must not be negative.'),
+        assert(decodeSizeBucket > 0, 'decodeSizeBucket must be positive.'),
         headers =
             headers == null ? null : Map<String, String>.unmodifiable(headers),
         assert(isNumValid(imageWidth), 'imageWidth is a Invalid value!'),
@@ -91,6 +97,8 @@ class PowerImageRequestOptions {
         cancellationToken = null,
         cacheRawBytes = true,
         networkPriority = PowerImageNetworkPriority.visible,
+        decodeFit = PowerImageDecodeFit.contain,
+        decodeSizeBucket = 1,
         assert(isNumValid(imageWidth), 'imageWidth is a Invalid value!'),
         _imageWidth = makeNumValid(imageWidth, null),
         assert(isNumValid(imageHeight), 'imageHeight is a Invalid value!'),
@@ -112,6 +120,8 @@ class PowerImageRequestOptions {
         cancellationToken = null,
         cacheRawBytes = true,
         networkPriority = PowerImageNetworkPriority.visible,
+        decodeFit = PowerImageDecodeFit.contain,
+        decodeSizeBucket = 1,
         assert(isNumValid(imageWidth), 'imageWidth is a Invalid value!'),
         _imageWidth = makeNumValid(imageWidth, null),
         assert(isNumValid(imageHeight), 'imageHeight is a Invalid value!'),
@@ -130,6 +140,8 @@ class PowerImageRequestOptions {
         cancellationToken = null,
         cacheRawBytes = true,
         networkPriority = PowerImageNetworkPriority.visible,
+        decodeFit = PowerImageDecodeFit.contain,
+        decodeSizeBucket = 1,
         assert(isNumValid(imageWidth), 'imageWidth is a Invalid value!'),
         _imageWidth = makeNumValid(imageWidth, null),
         assert(isNumValid(imageHeight), 'imageHeight is a Invalid value!'),
@@ -166,6 +178,12 @@ class PowerImageRequestOptions {
   /// promote an equal in-flight background prefetch.
   final PowerImageNetworkPriority networkPriority;
 
+  /// How [imageWidth] and [imageHeight] constrain codec output dimensions.
+  final PowerImageDecodeFit decodeFit;
+
+  /// Rounds requested physical decode dimensions upward to this many pixels.
+  final int decodeSizeBucket;
+
   double? get imageWidth => _imageWidth;
   final double? _imageWidth;
 
@@ -178,7 +196,8 @@ class PowerImageRequestOptions {
         'networkBackend: $networkBackend, headerNames: ${headers?.keys}, '
         'cacheKey: $cacheKey, timeout: $timeout, retryCount: $retryCount, '
         'retryDelay: $retryDelay, cacheRawBytes: $cacheRawBytes, '
-        'networkPriority: $networkPriority';
+        'networkPriority: $networkPriority, decodeFit: $decodeFit, '
+        'decodeSizeBucket: $decodeSizeBucket';
   }
 
   @override
@@ -199,6 +218,8 @@ class PowerImageRequestOptions {
         other.retryDelay == retryDelay &&
         identical(other.cancellationToken, cancellationToken) &&
         other.cacheRawBytes == cacheRawBytes &&
+        other.decodeFit == decodeFit &&
+        other.decodeSizeBucket == decodeSizeBucket &&
         other.imageWidth == imageWidth &&
         other.imageHeight == imageHeight;
   }
@@ -217,6 +238,8 @@ class PowerImageRequestOptions {
         retryDelay,
         cancellationToken,
         cacheRawBytes,
+        decodeFit,
+        decodeSizeBucket,
         imageWidth,
         imageHeight,
       );

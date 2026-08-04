@@ -1,0 +1,649 @@
+{
+    "schema_version":  1,
+    "generated_at":  "2026-08-04T12:08:41.7053363+08:00",
+    "device":  {
+                   "serial":  "APH7N19528013778",
+                   "manufacturer":  "HUAWEI",
+                   "model":  "VOG-AL10",
+                   "android_release":  "10",
+                   "sdk":  29,
+                   "build_fingerprint":  "HUAWEI/VOG-AL10/HWVOG:10/HUAWEIVOG-AL10/10.1.0.162C00:user/release-keys"
+               },
+    "config":  {
+                   "iterations":  1,
+                   "warmup_seconds":  12,
+                   "sample_seconds":  20,
+                   "cooldown_seconds":  2,
+                   "cpu_clock_ticks_per_second":  100,
+                   "cpu_online_cores":  8,
+                   "gpu_max_frequency_hz":  720000000,
+                   "gpu_utilization_available":  false,
+                   "gpu_note":  "Production kernel denies access to gpu_scene_aware/utilisation; frequency is a workload proxy, not utilization.",
+                   "materials":  "D:\\power_image\\测试素材\\manifest.csv"
+               },
+    "summary":  [
+                    {
+                        "scenario":  "power_flutter",
+                        "label":  "PowerImage Flutter codec",
+                        "runs":  1,
+                        "one_second_samples":  20,
+                        "cpu_core_percent_p50":  125.67,
+                        "cpu_core_percent_p95":  136.685,
+                        "cpu_total_capacity_percent_p50":  15.709,
+                        "cpu_total_capacity_percent_p95":  17.086,
+                        "rss_kb_p50":  310542,
+                        "rss_kb_p95":  314575.2,
+                        "total_pss_kb_p50":  170066,
+                        "total_pss_kb_p95":  170066,
+                        "graphics_pss_kb_p50":  56680,
+                        "graphics_pss_kb_p95":  56680,
+                        "native_heap_pss_kb_p50":  62944,
+                        "gpu_frequency_mhz_p50":  139,
+                        "gpu_frequency_mhz_p95":  139,
+                        "gpu_frequency_max_ratio_percent_p50":  19.31,
+                        "displayed_fps_p50":  60.353,
+                        "frame_interval_p95_ms_p50":  17.729,
+                        "temperature_end_c_p50":  32
+                    },
+                    {
+                        "scenario":  "power_frame_cache",
+                        "label":  "PowerImage loop-frame cache",
+                        "runs":  1,
+                        "one_second_samples":  20,
+                        "cpu_core_percent_p50":  137.177,
+                        "cpu_core_percent_p95":  140.096,
+                        "cpu_total_capacity_percent_p50":  17.147,
+                        "cpu_total_capacity_percent_p95":  17.512,
+                        "rss_kb_p50":  253322,
+                        "rss_kb_p95":  261292.4,
+                        "total_pss_kb_p50":  186907,
+                        "total_pss_kb_p95":  186907,
+                        "graphics_pss_kb_p50":  75252,
+                        "graphics_pss_kb_p95":  75252,
+                        "native_heap_pss_kb_p50":  63154,
+                        "gpu_frequency_mhz_p50":  139,
+                        "gpu_frequency_mhz_p95":  139,
+                        "gpu_frequency_max_ratio_percent_p50":  19.31,
+                        "displayed_fps_p50":  60.347,
+                        "frame_interval_p95_ms_p50":  17.996,
+                        "temperature_end_c_p50":  33
+                    },
+                    {
+                        "scenario":  "extended",
+                        "label":  "ExtendedImage 10.1.0",
+                        "runs":  1,
+                        "one_second_samples":  20,
+                        "cpu_core_percent_p50":  135.249,
+                        "cpu_core_percent_p95":  137.375,
+                        "cpu_total_capacity_percent_p50":  16.906,
+                        "cpu_total_capacity_percent_p95":  17.172,
+                        "rss_kb_p50":  285920,
+                        "rss_kb_p95":  294417.2,
+                        "total_pss_kb_p50":  154854,
+                        "total_pss_kb_p95":  154854,
+                        "graphics_pss_kb_p50":  48084,
+                        "graphics_pss_kb_p95":  48084,
+                        "native_heap_pss_kb_p50":  56390,
+                        "gpu_frequency_mhz_p50":  139,
+                        "gpu_frequency_mhz_p95":  139,
+                        "gpu_frequency_max_ratio_percent_p50":  19.31,
+                        "displayed_fps_p50":  60.171,
+                        "frame_interval_p95_ms_p50":  18.066,
+                        "temperature_end_c_p50":  33
+                    }
+                ],
+    "runs":  [
+                 {
+                     "iteration":  1,
+                     "scenario":  "power_flutter",
+                     "label":  "PowerImage Flutter codec",
+                     "process_id":  32618,
+                     "temperature_start_c":  32,
+                     "temperature_end_c":  32,
+                     "memory":  {
+                                    "total_pss_kb":  170066,
+                                    "native_heap_pss_kb":  62944,
+                                    "dalvik_heap_pss_kb":  1065,
+                                    "graphics_pss_kb":  56680,
+                                    "java_heap_summary_kb":  2356
+                                },
+                     "surface":  {
+                                     "surface":  "SurfaceView - com.taobao.power_image_example/com.taobao.power_image_example.MainActivity#0",
+                                     "displayed_fps":  60.353,
+                                     "frame_interval_p50_ms":  16.569,
+                                     "frame_interval_p95_ms":  17.729,
+                                     "samples":  126
+                                 },
+                     "samples":  [
+                                     {
+                                         "second":  1,
+                                         "cpu_core_percent":  122.9644,
+                                         "cpu_total_capacity_percent":  15.3705,
+                                         "rss_kb":  305884,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  2,
+                                         "cpu_core_percent":  121.8423,
+                                         "cpu_total_capacity_percent":  15.2303,
+                                         "rss_kb":  306228,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  3,
+                                         "cpu_core_percent":  124.0224,
+                                         "cpu_total_capacity_percent":  15.5028,
+                                         "rss_kb":  305744,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  4,
+                                         "cpu_core_percent":  123.2484,
+                                         "cpu_total_capacity_percent":  15.4061,
+                                         "rss_kb":  310656,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  5,
+                                         "cpu_core_percent":  125.2302,
+                                         "cpu_total_capacity_percent":  15.6538,
+                                         "rss_kb":  310428,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  6,
+                                         "cpu_core_percent":  126.2981,
+                                         "cpu_total_capacity_percent":  15.7873,
+                                         "rss_kb":  310980,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  7,
+                                         "cpu_core_percent":  124.4882,
+                                         "cpu_total_capacity_percent":  15.561,
+                                         "rss_kb":  313196,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  8,
+                                         "cpu_core_percent":  125.7873,
+                                         "cpu_total_capacity_percent":  15.7234,
+                                         "rss_kb":  313312,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  9,
+                                         "cpu_core_percent":  125.5533,
+                                         "cpu_total_capacity_percent":  15.6942,
+                                         "rss_kb":  313332,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  10,
+                                         "cpu_core_percent":  124.6815,
+                                         "cpu_total_capacity_percent":  15.5852,
+                                         "rss_kb":  313180,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  11,
+                                         "cpu_core_percent":  129.2524,
+                                         "cpu_total_capacity_percent":  16.1566,
+                                         "rss_kb":  311656,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  12,
+                                         "cpu_core_percent":  129.6154,
+                                         "cpu_total_capacity_percent":  16.2019,
+                                         "rss_kb":  314480,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  13,
+                                         "cpu_core_percent":  125.3723,
+                                         "cpu_total_capacity_percent":  15.6715,
+                                         "rss_kb":  316384,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  14,
+                                         "cpu_core_percent":  132.595,
+                                         "cpu_total_capacity_percent":  16.5744,
+                                         "rss_kb":  311680,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  15,
+                                         "cpu_core_percent":  133.7392,
+                                         "cpu_total_capacity_percent":  16.7174,
+                                         "rss_kb":  308012,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  16,
+                                         "cpu_core_percent":  136.3761,
+                                         "cpu_total_capacity_percent":  17.047,
+                                         "rss_kb":  307268,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  17,
+                                         "cpu_core_percent":  134.2154,
+                                         "cpu_total_capacity_percent":  16.7769,
+                                         "rss_kb":  306228,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  18,
+                                         "cpu_core_percent":  131.4423,
+                                         "cpu_total_capacity_percent":  16.4303,
+                                         "rss_kb":  308524,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  19,
+                                         "cpu_core_percent":  123.4515,
+                                         "cpu_total_capacity_percent":  15.4314,
+                                         "rss_kb":  309912,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  20,
+                                         "cpu_core_percent":  142.5574,
+                                         "cpu_total_capacity_percent":  17.8197,
+                                         "rss_kb":  310328,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     }
+                                 ]
+                 },
+                 {
+                     "iteration":  1,
+                     "scenario":  "power_frame_cache",
+                     "label":  "PowerImage loop-frame cache",
+                     "process_id":  1612,
+                     "temperature_start_c":  32,
+                     "temperature_end_c":  33,
+                     "memory":  {
+                                    "total_pss_kb":  186907,
+                                    "native_heap_pss_kb":  63154,
+                                    "dalvik_heap_pss_kb":  1014,
+                                    "graphics_pss_kb":  75252,
+                                    "java_heap_summary_kb":  2404
+                                },
+                     "surface":  {
+                                     "surface":  "SurfaceView - com.taobao.power_image_example/com.taobao.power_image_example.MainActivity#0",
+                                     "displayed_fps":  60.347,
+                                     "frame_interval_p50_ms":  16.571,
+                                     "frame_interval_p95_ms":  17.996,
+                                     "samples":  126
+                                 },
+                     "samples":  [
+                                     {
+                                         "second":  1,
+                                         "cpu_core_percent":  138.3622,
+                                         "cpu_total_capacity_percent":  17.2953,
+                                         "rss_kb":  245388,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  2,
+                                         "cpu_core_percent":  137.1762,
+                                         "cpu_total_capacity_percent":  17.147,
+                                         "rss_kb":  245216,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  3,
+                                         "cpu_core_percent":  136.3892,
+                                         "cpu_total_capacity_percent":  17.0487,
+                                         "rss_kb":  246288,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  4,
+                                         "cpu_core_percent":  136.4119,
+                                         "cpu_total_capacity_percent":  17.0515,
+                                         "rss_kb":  249868,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  5,
+                                         "cpu_core_percent":  134.9016,
+                                         "cpu_total_capacity_percent":  16.8627,
+                                         "rss_kb":  251164,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  6,
+                                         "cpu_core_percent":  136.8675,
+                                         "cpu_total_capacity_percent":  17.1084,
+                                         "rss_kb":  252272,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  7,
+                                         "cpu_core_percent":  139.3311,
+                                         "cpu_total_capacity_percent":  17.4164,
+                                         "rss_kb":  252032,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  8,
+                                         "cpu_core_percent":  136.0829,
+                                         "cpu_total_capacity_percent":  17.0104,
+                                         "rss_kb":  251832,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  9,
+                                         "cpu_core_percent":  137.0359,
+                                         "cpu_total_capacity_percent":  17.1295,
+                                         "rss_kb":  251408,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  10,
+                                         "cpu_core_percent":  138.1565,
+                                         "cpu_total_capacity_percent":  17.2696,
+                                         "rss_kb":  251284,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  11,
+                                         "cpu_core_percent":  136.9526,
+                                         "cpu_total_capacity_percent":  17.1191,
+                                         "rss_kb":  254372,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  12,
+                                         "cpu_core_percent":  137.1772,
+                                         "cpu_total_capacity_percent":  17.1471,
+                                         "rss_kb":  255728,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  13,
+                                         "cpu_core_percent":  136.2801,
+                                         "cpu_total_capacity_percent":  17.035,
+                                         "rss_kb":  255256,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  14,
+                                         "cpu_core_percent":  137.2762,
+                                         "cpu_total_capacity_percent":  17.1595,
+                                         "rss_kb":  256420,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  15,
+                                         "cpu_core_percent":  140.0847,
+                                         "cpu_total_capacity_percent":  17.5106,
+                                         "rss_kb":  256504,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  16,
+                                         "cpu_core_percent":  140.3133,
+                                         "cpu_total_capacity_percent":  17.5392,
+                                         "rss_kb":  256564,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  17,
+                                         "cpu_core_percent":  139.5926,
+                                         "cpu_total_capacity_percent":  17.4491,
+                                         "rss_kb":  256780,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  18,
+                                         "cpu_core_percent":  138.5854,
+                                         "cpu_total_capacity_percent":  17.3232,
+                                         "rss_kb":  258688,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  19,
+                                         "cpu_core_percent":  135.704,
+                                         "cpu_total_capacity_percent":  16.963,
+                                         "rss_kb":  261224,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  20,
+                                         "cpu_core_percent":  137.5654,
+                                         "cpu_total_capacity_percent":  17.1957,
+                                         "rss_kb":  262592,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     }
+                                 ]
+                 },
+                 {
+                     "iteration":  1,
+                     "scenario":  "extended",
+                     "label":  "ExtendedImage 10.1.0",
+                     "process_id":  2356,
+                     "temperature_start_c":  33,
+                     "temperature_end_c":  33,
+                     "memory":  {
+                                    "total_pss_kb":  154854,
+                                    "native_heap_pss_kb":  56390,
+                                    "dalvik_heap_pss_kb":  1045,
+                                    "graphics_pss_kb":  48084,
+                                    "java_heap_summary_kb":  2536
+                                },
+                     "surface":  {
+                                     "surface":  "SurfaceView - com.taobao.power_image_example/com.taobao.power_image_example.MainActivity#0",
+                                     "displayed_fps":  60.171,
+                                     "frame_interval_p50_ms":  16.619,
+                                     "frame_interval_p95_ms":  18.066,
+                                     "samples":  126
+                                 },
+                     "samples":  [
+                                     {
+                                         "second":  1,
+                                         "cpu_core_percent":  135.4042,
+                                         "cpu_total_capacity_percent":  16.9255,
+                                         "rss_kb":  281672,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  2,
+                                         "cpu_core_percent":  133.8395,
+                                         "cpu_total_capacity_percent":  16.7299,
+                                         "rss_kb":  282204,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  3,
+                                         "cpu_core_percent":  136.4097,
+                                         "cpu_total_capacity_percent":  17.0512,
+                                         "rss_kb":  282220,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  4,
+                                         "cpu_core_percent":  135.158,
+                                         "cpu_total_capacity_percent":  16.8947,
+                                         "rss_kb":  281964,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  5,
+                                         "cpu_core_percent":  135.1157,
+                                         "cpu_total_capacity_percent":  16.8895,
+                                         "rss_kb":  284520,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  6,
+                                         "cpu_core_percent":  135.5229,
+                                         "cpu_total_capacity_percent":  16.9404,
+                                         "rss_kb":  285356,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  7,
+                                         "cpu_core_percent":  135.6068,
+                                         "cpu_total_capacity_percent":  16.9509,
+                                         "rss_kb":  285920,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  8,
+                                         "cpu_core_percent":  135.5841,
+                                         "cpu_total_capacity_percent":  16.948,
+                                         "rss_kb":  285920,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  9,
+                                         "cpu_core_percent":  136.1009,
+                                         "cpu_total_capacity_percent":  17.0126,
+                                         "rss_kb":  285680,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  10,
+                                         "cpu_core_percent":  135.2106,
+                                         "cpu_total_capacity_percent":  16.9013,
+                                         "rss_kb":  285420,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  11,
+                                         "cpu_core_percent":  134.6425,
+                                         "cpu_total_capacity_percent":  16.8303,
+                                         "rss_kb":  285184,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  12,
+                                         "cpu_core_percent":  135.8904,
+                                         "cpu_total_capacity_percent":  16.9863,
+                                         "rss_kb":  287064,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  13,
+                                         "cpu_core_percent":  132.3661,
+                                         "cpu_total_capacity_percent":  16.5458,
+                                         "rss_kb":  286612,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  14,
+                                         "cpu_core_percent":  133.0304,
+                                         "cpu_total_capacity_percent":  16.6288,
+                                         "rss_kb":  286672,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  15,
+                                         "cpu_core_percent":  139.8391,
+                                         "cpu_total_capacity_percent":  17.4799,
+                                         "rss_kb":  288880,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  16,
+                                         "cpu_core_percent":  134.8322,
+                                         "cpu_total_capacity_percent":  16.854,
+                                         "rss_kb":  290728,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  17,
+                                         "cpu_core_percent":  133.9951,
+                                         "cpu_total_capacity_percent":  16.7494,
+                                         "rss_kb":  293540,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  18,
+                                         "cpu_core_percent":  135.1631,
+                                         "cpu_total_capacity_percent":  16.8954,
+                                         "rss_kb":  293572,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  19,
+                                         "cpu_core_percent":  137.2454,
+                                         "cpu_total_capacity_percent":  17.1557,
+                                         "rss_kb":  294896,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     },
+                                     {
+                                         "second":  20,
+                                         "cpu_core_percent":  135.288,
+                                         "cpu_total_capacity_percent":  16.911,
+                                         "rss_kb":  294392,
+                                         "gpu_frequency_hz":  139000000,
+                                         "gpu_frequency_max_ratio_percent":  19.3056
+                                     }
+                                 ]
+                 }
+             ]
+}

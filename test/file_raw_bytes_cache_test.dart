@@ -9,10 +9,14 @@ void main() {
   late Directory directory;
   late List<PowerImageFileRawBytesCache> caches;
 
-  PowerImageFileRawBytesCache createCache({required int maxSizeBytes}) {
+  PowerImageFileRawBytesCache createCache({
+    required int maxSizeBytes,
+    int maxPendingWriteBytes = 32 << 20,
+  }) {
     final PowerImageFileRawBytesCache cache = PowerImageFileRawBytesCache(
       directory: directory,
       maxSizeBytes: maxSizeBytes,
+      maxPendingWriteBytes: maxPendingWriteBytes,
     );
     caches.add(cache);
     return cache;
@@ -60,6 +64,17 @@ void main() {
     await restarted.warmUp();
 
     expect(await restarted.read('immutable-v1'), orderedEquals(bytes));
+  });
+
+  test('reads a known key before the full directory scan finishes', () async {
+    final Uint8List bytes = Uint8List.fromList(<int>[2, 7, 1, 8]);
+    final PowerImageFileRawBytesCache first = createCache(maxSizeBytes: 1024);
+    await first.write('startup-key', bytes);
+
+    final PowerImageFileRawBytesCache restarted =
+        createCache(maxSizeBytes: 1024);
+
+    expect(await restarted.read('startup-key'), orderedEquals(bytes));
   });
 
   test('the in-memory index avoids disk I/O for known misses', () async {
@@ -184,6 +199,44 @@ void main() {
     );
     expect(sizes.fold<int>(0, (int total, int size) => total + size),
         lessThanOrEqualTo(128));
+    expect(
+      await directory
+          .list()
+          .where((FileSystemEntity entity) => entity.path.contains('.pi-tmp-'))
+          .isEmpty,
+      isTrue,
+    );
+  });
+
+  test('pending byte budget drops excess burst writes', () async {
+    final PowerImageFileRawBytesCache cache = createCache(
+      maxSizeBytes: 128,
+      maxPendingWriteBytes: 8,
+    );
+
+    await cache.writeAll(<String, Uint8List>{
+      'first': Uint8List(8),
+      'second': Uint8List(8),
+      'third': Uint8List(8),
+    });
+
+    expect(cache.debugDiskWriteCount, 1);
+    expect(cache.debugDroppedWriteCount, 2);
+    expect(cache.debugPeakPendingWriteBytes, 8);
+  });
+
+  test('one oversized write lands through a temporary file', () async {
+    final PowerImageFileRawBytesCache cache = createCache(
+      maxSizeBytes: 64,
+      maxPendingWriteBytes: 8,
+    );
+    final Uint8List bytes = Uint8List.fromList(List<int>.filled(16, 7));
+
+    await cache.write('oversized', bytes);
+
+    expect(await cache.read('oversized'), bytes);
+    expect(cache.debugDroppedWriteCount, 0);
+    expect(cache.debugPeakPendingWriteBytes, 16);
     expect(
       await directory
           .list()
